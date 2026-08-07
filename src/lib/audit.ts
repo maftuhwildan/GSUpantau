@@ -14,9 +14,9 @@ export interface CreateAuditLogParams {
   requestId?: string | null;
 }
 
+// eslint-disable-next-line
 export async function createAuditLog(
   params: CreateAuditLogParams,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tx?: any
 ) {
   try {
