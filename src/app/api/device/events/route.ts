@@ -64,10 +64,7 @@ export async function POST(req: NextRequest) {
           .select()
           .from(sensorEvents)
           .where(
-            or(
-              eq(sensorEvents.eventId, evt.event_id),
-              and(eq(sensorEvents.deviceId, device!.id), eq(sensorEvents.sequence, evt.sequence))
-            )
+            eq(sensorEvents.eventId, evt.event_id)
           );
 
         if (existing) {

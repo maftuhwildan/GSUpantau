@@ -1,0 +1,57 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/db';
+import { lines, devices } from '@/db/schema';
+import { getSessionFromToken, SESSION_COOKIE_NAME } from '@/lib/auth';
+import { forbiddenError, internalError } from '@/lib/errors';
+
+export async function GET(req: NextRequest) {
+  try {
+    const isDev = process.env.NODE_ENV !== 'production';
+    const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;
+    const user = token ? await getSessionFromToken(token) : null;
+    const isAdmin = user?.roles.includes('ADMIN');
+
+    if (!isDev && !isAdmin) {
+      return forbiddenError('Hanya Admin atau lingkungan Development yang dapat mengakses simulator.');
+    }
+
+    const allLines = await db.select().from(lines).orderBy(lines.lineCode);
+    const allDevices = await db.select().from(devices);
+
+    const result = allLines.map((line) => {
+      const lineDevices = allDevices
+        .filter((d) => d.lineId === line.id)
+        .map((dev) => {
+          let defaultSecret = '';
+          if (dev.deviceCode === 'ESP32-LINE-01') {
+            defaultSecret = 'secret-device-key-01';
+          } else if (dev.deviceCode === 'ESP32-LINE-02') {
+            defaultSecret = 'secret-device-key-02';
+          }
+
+          return {
+            id: dev.id,
+            deviceCode: dev.deviceCode,
+            name: dev.name,
+            status: dev.status,
+            firmwareVersion: dev.firmwareVersion,
+            lastHeartbeatAt: dev.lastHeartbeatAt,
+            defaultSecret,
+          };
+        });
+
+      return {
+        id: line.id,
+        lineCode: line.lineCode,
+        name: line.name,
+        status: line.status,
+        devices: lineDevices,
+      };
+    });
+
+    return NextResponse.json({ lines: result });
+  } catch (error) {
+    console.error('GET /api/dev/simulator/options error:', error);
+    return internalError('Gagal mengambil data simulator options');
+  }
+}

@@ -25,8 +25,10 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/active-session') ||
     pathname.startsWith('/sensor-activity');
 
+  const isDevPath = pathname.startsWith('/dev');
+
   // 1. Unauthenticated user trying to access protected paths
-  if (!user && (isAdminPath || isOperatorPath)) {
+  if (!user && (isAdminPath || isOperatorPath || isDevPath)) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('from', pathname);
     return NextResponse.redirect(loginUrl);
@@ -38,8 +40,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(homeUrl, request.url));
   }
 
-  // 3. Operator user trying to access /admin/*
-  if (user && isAdminPath && !user.roles.includes('ADMIN')) {
+  // 3. Operator user trying to access /admin/* or /dev/* (in production)
+  if (user && (isAdminPath || (isDevPath && process.env.NODE_ENV === 'production')) && !user.roles.includes('ADMIN')) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
@@ -55,5 +57,6 @@ export const config = {
     '/active-session/:path*',
     '/sensor-activity/:path*',
     '/admin/:path*',
+    '/dev/:path*',
   ],
 };

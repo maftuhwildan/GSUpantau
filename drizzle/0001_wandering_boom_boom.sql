@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS "device_sequence_unique";

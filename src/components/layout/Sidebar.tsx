@@ -14,6 +14,7 @@ import {
   FileSpreadsheet,
   History,
   Bird,
+  Radio,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -97,6 +98,11 @@ export function Sidebar({ role }: SidebarProps) {
       title: "Audit Trail",
       href: "/admin/audit-trail",
       icon: History,
+    },
+    {
+      title: "Simulator Sensor",
+      href: "/dev/sensor-simulator",
+      icon: Radio,
     },
   ];
 

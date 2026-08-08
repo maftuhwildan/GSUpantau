@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { QueueTable, ReceivingData } from '@/components/receiving/queue-table';
 import { ReceivingFormDialog } from '@/components/receiving/receiving-form-dialog';
 import { ReceivingCancelDialog } from '@/components/receiving/receiving-cancel-dialog';
+import { StartCountingDialog } from '@/components/receiving/start-counting-dialog';
 
 export default function AdminReceivingPage() {
   const [receivings, setReceivings] = useState<ReceivingData[]>([]);
@@ -23,6 +24,9 @@ export default function AdminReceivingPage() {
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [receivingToCancel, setReceivingToCancel] = useState<ReceivingData | null>(null);
+
+  const [startDialogOpen, setStartDialogOpen] = useState(false);
+  const [receivingToStart, setReceivingToStart] = useState<ReceivingData | null>(null);
 
   const fetchReceivings = useCallback(async () => {
     setLoading(true);
@@ -88,9 +92,14 @@ export default function AdminReceivingPage() {
     }
   };
 
-  const handleCancelPrompt = (rec: ReceivingData) => {
-    setReceivingToCancel(rec);
+  const handleCancelPrompt = (receiving: ReceivingData) => {
+    setReceivingToCancel(receiving);
     setCancelDialogOpen(true);
+  };
+
+  const handleStartPrompt = (receiving: ReceivingData) => {
+    setReceivingToStart(receiving);
+    setStartDialogOpen(true);
   };
 
   const countsByStatus = {
@@ -174,6 +183,7 @@ export default function AdminReceivingPage() {
             onPublish={handlePublish}
             onEdit={handleEdit}
             onCancel={handleCancelPrompt}
+            onStart={handleStartPrompt}
             loading={loading}
           />
         </CardContent>
@@ -193,6 +203,14 @@ export default function AdminReceivingPage() {
         receivingId={receivingToCancel?.id || null}
         deliveryNoteNumber={receivingToCancel?.deliveryNoteNumber || ''}
         onSuccess={fetchReceivings}
+      />
+
+      <StartCountingDialog
+        open={startDialogOpen}
+        onOpenChange={setStartDialogOpen}
+        receivingId={receivingToStart?.id || null}
+        deliveryNoteNumber={receivingToStart?.deliveryNoteNumber || ''}
+        isAdmin={true}
       />
     </div>
   );

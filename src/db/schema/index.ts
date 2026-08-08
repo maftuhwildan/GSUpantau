@@ -171,9 +171,7 @@ export const sensorEvents = pgTable('sensor_events', {
   eventMode: varchar('event_mode', { length: 20 }).notNull().default('PRODUCTION'), // 'PRODUCTION', 'TEST', 'MAINTENANCE'
   rawPayload: jsonb('raw_payload').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
-  deviceSequenceUnique: uniqueIndex('device_sequence_unique').on(table.deviceId, table.sequence),
-}));
+});
 
 // 13. Reconciliation Reviews
 export const reconciliationReviews = pgTable('reconciliation_reviews', {

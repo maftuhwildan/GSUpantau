@@ -6,11 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { QueueTable, ReceivingData } from '@/components/receiving/queue-table';
+import { StartCountingDialog } from '@/components/receiving/start-counting-dialog';
 
 export default function OperatorReceivingQueuePage() {
   const [receivings, setReceivings] = useState<ReceivingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+
+  const [startDialogOpen, setStartDialogOpen] = useState(false);
+  const [receivingToStart, setReceivingToStart] = useState<ReceivingData | null>(null);
 
   const fetchQueue = useCallback(async () => {
     setLoading(true);
@@ -42,6 +46,11 @@ export default function OperatorReceivingQueuePage() {
   useEffect(() => {
     fetchQueue();
   }, [fetchQueue]);
+
+  const handleStartPrompt = (receiving: ReceivingData) => {
+    setReceivingToStart(receiving);
+    setStartDialogOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -96,10 +105,19 @@ export default function OperatorReceivingQueuePage() {
           <QueueTable
             receivings={receivings}
             isAdmin={false}
+            onStart={handleStartPrompt}
             loading={loading}
           />
         </CardContent>
       </Card>
+
+      <StartCountingDialog
+        open={startDialogOpen}
+        onOpenChange={setStartDialogOpen}
+        receivingId={receivingToStart?.id || null}
+        deliveryNoteNumber={receivingToStart?.deliveryNoteNumber || ''}
+        isAdmin={false}
+      />
     </div>
   );
 }
