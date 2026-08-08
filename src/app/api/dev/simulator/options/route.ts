@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { lines, devices } from '@/db/schema';
-import { getSessionFromToken, SESSION_COOKIE_NAME } from '@/lib/auth';
-import { forbiddenError, internalError } from '@/lib/errors';
+import { requireRole } from '@/lib/auth';
+import { internalError } from '@/lib/errors';
 
 export async function GET(req: NextRequest) {
-  try {
-    const isDev = process.env.NODE_ENV !== 'production';
-    const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;
-    const user = token ? await getSessionFromToken(token) : null;
-    const isAdmin = user?.roles.includes('ADMIN');
+  const { errorResponse } = await requireRole(req, 'ADMIN');
+  if (errorResponse) return errorResponse;
 
-    if (!isDev && !isAdmin) {
-      return forbiddenError('Hanya Admin atau lingkungan Development yang dapat mengakses simulator.');
-    }
+  try {
 
     const allLines = await db.select().from(lines).orderBy(lines.lineCode);
     const allDevices = await db.select().from(devices);

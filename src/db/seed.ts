@@ -2,6 +2,7 @@ import { db } from './index';
 import * as schema from './schema';
 import { runMigrations } from './migrate';
 import bcrypt from 'bcryptjs';
+import { eq } from 'drizzle-orm';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -81,6 +82,11 @@ export async function runSeed() {
     name: 'Jalur Penerimaan 2',
     status: 'ACTIVE',
   }).returning();
+
+  // Assign operator to line 1
+  await db.update(schema.users)
+    .set({ assignedLineId: line1.id })
+    .where(eq(schema.users.id, operatorUser.id));
 
   // 6. Seed Devices (ESP32)
   console.log('Seeding devices...');

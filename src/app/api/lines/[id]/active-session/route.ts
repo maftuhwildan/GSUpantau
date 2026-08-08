@@ -2,18 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { receivingSessions, receivings, sensorEvents, devices, lines } from '@/db/schema';
 import { requirePermission } from '@/lib/auth';
-import { createErrorResponse, notFoundError } from '@/lib/errors';
+import { createErrorResponse, forbiddenError, notFoundError } from '@/lib/errors';
 import { eq, and, desc, count } from 'drizzle-orm';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { errorResponse } = await requirePermission(req, 'dashboard:view');
+  const { user, errorResponse } = await requirePermission(req, 'dashboard:view');
   if (errorResponse) return errorResponse;
 
   try {
     const { id: lineId } = await params;
+
+    const isOperatorOnly = user!.roles.includes('OPERATOR') && !user!.roles.includes('ADMIN');
+    if (isOperatorOnly) {
+      if (!user!.assignedLineId || user!.assignedLineId !== lineId) {
+        return forbiddenError('Akses ditolak. Anda tidak memiliki akses ke jalur (Line) ini.');
+      }
+    }
 
     // Check line exists
     const [line] = await db

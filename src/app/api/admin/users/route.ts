@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePermission } from '@/lib/auth';
+import { requireRole } from '@/lib/auth';
 import { db } from '@/db';
 import * as schema from '@/db/schema';
 import { internalError } from '@/lib/errors';
 
 export async function GET(req: NextRequest) {
-  const { user, errorResponse } = await requirePermission(req, 'users:manage');
+  const { user, errorResponse } = await requireRole(req, 'ADMIN');
   if (errorResponse) {
     return errorResponse;
   }

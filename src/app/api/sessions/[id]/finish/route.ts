@@ -4,7 +4,7 @@ import { db } from '@/db';
 import { receivings, receivingSessions, sensorEvents, reconciliationReviews } from '@/db/schema';
 import { requirePermission } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/audit';
-import { AppError, buildErrorResponse, createErrorResponse, validationError, notFoundError } from '@/lib/errors';
+import { AppError, buildErrorResponse, createErrorResponse, forbiddenError, validationError, notFoundError } from '@/lib/errors';
 import { lockCountingLine } from '@/lib/counting-lock';
 import { wsBroadcaster } from '@/lib/ws';
 import { eq, and, count } from 'drizzle-orm';
@@ -40,6 +40,13 @@ export async function POST(
 
     if (!session) {
       return notFoundError('Sesi penghitungan tidak ditemukan');
+    }
+
+    const isOperatorOnly = user!.roles.includes('OPERATOR') && !user!.roles.includes('ADMIN');
+    if (isOperatorOnly) {
+      if (!user!.assignedLineId || session.lineId !== user!.assignedLineId) {
+        return forbiddenError('Akses ditolak. Anda tidak memiliki akses ke jalur (Line) ini.');
+      }
     }
 
     if (session.status !== 'COUNTING') {

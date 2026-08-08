@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { NextRequest } from 'next/server';
 import { runSeed } from '../db/seed';
 import { db } from '../db';
-import { lines, devices, sensorEvents, receivingSessions, receivings } from '../db/schema';
+import { lines, devices, sensorEvents, receivingSessions, receivings, users } from '../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { GET as optionsHandler } from '../app/api/dev/simulator/options/route';
 import { POST as eventsHandler } from '../app/api/device/events/route';
@@ -33,9 +33,13 @@ describe('Sensor Simulator Integration (Batch 7)', () => {
     device1 = allDevices.find((d) => d.deviceCode === 'ESP32-LINE-01') || allDevices[0];
     device2 = allDevices.find((d) => d.deviceCode === 'ESP32-LINE-02') || allDevices[1];
 
+    const admin = await db.query.users.findFirst({
+      where: eq(users.email, 'admin@local.test'),
+    });
+
     // Create session token for admin user
     adminToken = await signSessionToken({
-      userId: 'admin-id',
+      userId: admin!.id,
       email: 'admin@local.test',
       name: 'Admin',
       roles: ['ADMIN'],

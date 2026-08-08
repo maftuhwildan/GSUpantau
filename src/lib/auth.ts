@@ -1,136 +1,96 @@
+/**
+ * auth.ts
+ *
+ * Database-aware authentication helpers for API route handlers (Node.js runtime).
+ * DO NOT import this file from middleware.ts — use session-token.ts instead.
+ */
 
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { Permission, getPermissionsForRoles } from './permissions';
 import { unauthorizedError, forbiddenError } from './errors';
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_MAX_AGE,
+  SessionPayload,
+  signSessionToken,
+  verifySessionToken,
+  getSessionSecret,
+} from './session-token';
+import { db } from '@/db';
+import { users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 
-export const SESSION_COOKIE_NAME = 'gsu_session';
-export const SESSION_MAX_AGE = 24 * 60 * 60; // 24 hours in seconds
+// Re-export token helpers and constants so existing callers don't need changes.
+export { SESSION_COOKIE_NAME, SESSION_MAX_AGE, signSessionToken, verifySessionToken, getSessionSecret };
+export type { SessionPayload };
 
-const SECRET_KEY = process.env.SESSION_SECRET || 'dev-secret-poultry-counter-key-2026';
-
-export interface SessionPayload {
-  userId: string;
-  email: string;
-  name: string;
-  roles: string[];
-  expiresAt: number;
-}
+export type UserRole = 'ADMIN' | 'OPERATOR';
 
 export interface SessionUser {
   id: string;
   email: string;
   name: string;
+  status: string;
+  assignedLineId?: string | null;
   roles: string[];
   permissions: Permission[];
 }
 
-function base64UrlEncode(str: string): string {
-  return Buffer.from(str)
-    .toString('base64')
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
-}
-
-function base64UrlDecode(str: string): string {
-  let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
-  while (base64.length % 4 !== 0) {
-    base64 += '=';
-  }
-  return Buffer.from(base64, 'base64').toString('utf-8');
-}
-
-async function getCryptoKey() {
-  const encoder = new TextEncoder();
-  return crypto.subtle.importKey(
-    'raw',
-    encoder.encode(SECRET_KEY),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign', 'verify']
-  );
-}
-
-function bufferToHex(buffer: ArrayBuffer): string {
-  return Array.from(new Uint8Array(buffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-function hexToBuffer(hex: string): ArrayBuffer {
-  const view = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    view[i / 2] = parseInt(hex.substring(i, i + 2), 16);
-  }
-  return view.buffer;
-}
-
-export async function signSessionToken(payload: SessionPayload): Promise<string> {
-  const jsonStr = JSON.stringify(payload);
-  const encodedData = base64UrlEncode(jsonStr);
-  const key = await getCryptoKey();
-  const encoder = new TextEncoder();
-  const signatureBuffer = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    encoder.encode(encodedData)
-  );
-  const signature = bufferToHex(signatureBuffer);
-  return `${encodedData}.${signature}`;
-}
-
-export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
-  if (!token || !token.includes('.')) return null;
-
-  const [encodedData, signature] = token.split('.');
-  if (!encodedData || !signature) return null;
-
-  try {
-    const key = await getCryptoKey();
-    const encoder = new TextEncoder();
-    const signatureBuffer = hexToBuffer(signature);
-    
-    const isValid = await crypto.subtle.verify(
-      'HMAC',
-      key,
-      signatureBuffer,
-      encoder.encode(encodedData)
-    );
-
-    if (!isValid) return null;
-
-    const payload: SessionPayload = JSON.parse(base64UrlDecode(encodedData));
-    if (Date.now() > payload.expiresAt) {
-      return null; // Expired
-    }
-    return payload;
-  } catch {
-    return null;
-  }
-}
-
+/**
+ * Reload user state from the database on every protected request.
+ * Roles in the token payload are NEVER trusted for authorization.
+ * Returns null if user is inactive, deleted, or token is invalid.
+ */
 export async function getSessionFromToken(token: string): Promise<SessionUser | null> {
   const payload = await verifySessionToken(token);
   if (!payload) return null;
 
-  const permissions = getPermissionsForRoles(payload.roles);
+  // Only accept tokens whose userId is a proper UUID.
+  // Older tokens with non-UUID user IDs (e.g. 'admin-id') are rejected.
+  const isUuid = z.string().uuid().safeParse(payload.userId).success;
+  if (!isUuid) return null;
 
-  return {
-    id: payload.userId,
-    email: payload.email,
-    name: payload.name,
-    roles: payload.roles,
-    permissions,
-  };
+  try {
+    const userRecord = await db.query.users.findFirst({
+      where: eq(users.id, payload.userId),
+      with: {
+        userRoles: {
+          with: {
+            role: true,
+          },
+        },
+      },
+    });
+
+    if (!userRecord || userRecord.status !== 'ACTIVE') {
+      return null;
+    }
+
+    const activeRoles = userRecord.userRoles.map((ur) => ur.role.code);
+    const permissions = getPermissionsForRoles(activeRoles);
+
+    return {
+      id: userRecord.id,
+      email: userRecord.email,
+      name: userRecord.name,
+      status: userRecord.status,
+      assignedLineId: userRecord.assignedLineId,
+      roles: activeRoles,
+      permissions,
+    };
+  } catch (err) {
+    console.error('Error reloading session user from DB:', err);
+    return null;
+  }
 }
 
 export async function getAuthSession(req?: Request | NextRequest): Promise<SessionUser | null> {
   let token: string | undefined;
 
   if (req) {
-    // Check Cookie header or cookies
-    if ('cookies' in req && typeof req.cookies.get === 'function') {
+    if ('cookies' in req && typeof (req as NextRequest).cookies?.get === 'function') {
       token = (req as NextRequest).cookies.get(SESSION_COOKIE_NAME)?.value;
     }
     if (!token) {
@@ -147,7 +107,6 @@ export async function getAuthSession(req?: Request | NextRequest): Promise<Sessi
       const cookieStore = await cookies();
       token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
     } catch {
-      // If outside request context
       token = undefined;
     }
   }
@@ -180,7 +139,9 @@ export function clearAuthCookie(response: NextResponse): void {
   });
 }
 
-export async function requireAuth(req: Request): Promise<{ user: SessionUser | null; errorResponse: NextResponse | null }> {
+export async function requireAuth(
+  req: Request
+): Promise<{ user: SessionUser | null; errorResponse: NextResponse | null }> {
   const user = await getAuthSession(req);
   if (!user) {
     return { user: null, errorResponse: unauthorizedError() };
@@ -200,4 +161,53 @@ export async function requirePermission(
   }
 
   return { user, errorResponse: null };
+}
+
+/**
+ * Guard that requires the user to have a specific role (DB authoritative).
+ * @param role - 'ADMIN' | 'OPERATOR'
+ */
+export async function requireRole(
+  req: Request,
+  role: UserRole
+): Promise<{ user: SessionUser | null; errorResponse: NextResponse | null }> {
+  const { user, errorResponse } = await requireAuth(req);
+  if (errorResponse) return { user: null, errorResponse };
+
+  if (!user!.roles.includes(role)) {
+    return { user: null, errorResponse: forbiddenError('Akses ditolak. Peran tidak sesuai.') };
+  }
+
+  return { user, errorResponse: null };
+}
+
+/**
+ * Returns true if the user has OPERATOR role but NOT ADMIN role.
+ * A user with both roles is treated as ADMIN per product spec.
+ */
+export function isOperatorOnly(user: SessionUser): boolean {
+  return user.roles.includes('OPERATOR') && !user.roles.includes('ADMIN');
+}
+
+/**
+ * Guard for Operator line access.
+ * Returns a forbiddenError response if the operator is not assigned to the
+ * requested line, or has no assigned line at all.
+ * Returns null if access is permitted.
+ */
+export function checkOperatorLineAccess(
+  user: SessionUser,
+  requestedLineId: string | null | undefined
+): NextResponse | null {
+  if (!isOperatorOnly(user)) return null; // Admin or multi-role: skip restriction
+
+  if (!user.assignedLineId) {
+    return forbiddenError('Operator belum ditugaskan pada jalur (Line) mana pun.');
+  }
+
+  if (requestedLineId && requestedLineId !== user.assignedLineId) {
+    return forbiddenError('Akses ditolak. Anda tidak memiliki akses ke jalur (Line) ini.');
+  }
+
+  return null;
 }

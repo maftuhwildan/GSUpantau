@@ -2,17 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { lines, devices, receivingSessions, receivings, sensorEvents } from '@/db/schema';
 import { requirePermission } from '@/lib/auth';
-import { internalError } from '@/lib/errors';
+import { forbiddenError, internalError } from '@/lib/errors';
 import { getStartOfTodayInSiteTimezone } from '@/lib/time';
 import { eq, and, sql, desc, gte, asc, or, isNull } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
-  const { errorResponse } = await requirePermission(req, 'dashboard:view');
+  const { user, errorResponse } = await requirePermission(req, 'dashboard:view');
   if (errorResponse) return errorResponse;
 
   try {
     const { searchParams } = new URL(req.url);
     let lineId = searchParams.get('line_id');
+
+    const isOperatorOnly = user!.roles.includes('OPERATOR') && !user!.roles.includes('ADMIN');
+
+    if (isOperatorOnly) {
+      if (!user!.assignedLineId) {
+        return forbiddenError('Operator belum ditugaskan pada jalur (Line) mana pun.');
+      }
+      if (lineId && lineId !== user!.assignedLineId) {
+        return forbiddenError('Akses ditolak. Anda tidak memiliki akses ke jalur (Line) ini.');
+      }
+      lineId = user!.assignedLineId;
+    }
 
     if (!lineId) {
       const firstLine = await db.query.lines.findFirst();

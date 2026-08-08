@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { receivings, lines, devices, receivingSessions, sensorEvents, users, auditLogs } from '@/db/schema';
-import { requirePermission } from '@/lib/auth';
+import { requireRole } from '@/lib/auth';
 import { internalError } from '@/lib/errors';
 import { getStartOfTodayInSiteTimezone, getTodayStringInSiteTimezone } from '@/lib/time';
 import { eq, and, sql, desc, gte, inArray, ne } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
-  const { errorResponse } = await requirePermission(req, 'dashboard:view');
+  const { errorResponse } = await requireRole(req, 'ADMIN');
   if (errorResponse) return errorResponse;
 
   try {

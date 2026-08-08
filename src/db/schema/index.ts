@@ -27,6 +27,7 @@ export const users = pgTable('users', {
   name: varchar('name', { length: 100 }).notNull(),
   passwordHash: text('password_hash').notNull(),
   status: varchar('status', { length: 20 }).notNull().default('ACTIVE'), // 'ACTIVE', 'INACTIVE'
+  assignedLineId: uuid('assigned_line_id').references(() => lines.id, { onDelete: 'set null' }),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -38,7 +39,9 @@ export const userRoles = pgTable('user_roles', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   roleId: uuid('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => ({
+  userIdRoleIdUnique: uniqueIndex('user_roles_user_id_role_id_unique').on(table.userId, table.roleId),
+}));
 
 // 4. Trucks
 export const trucks = pgTable('trucks', {
@@ -223,7 +226,8 @@ export const appSettings = pgTable('app_settings', {
 });
 
 // RELATIONS DEFINITIONS FOR DRIZZLE ORM
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
+  assignedLine: one(lines, { fields: [users.assignedLineId], references: [lines.id] }),
   userRoles: many(userRoles),
   receivingsCreated: many(receivings),
   sessionsStarted: many(receivingSessions, { relationName: 'startedBy' }),
@@ -241,6 +245,7 @@ export const userRolesRelations = relations(userRoles, ({ one }) => ({
 }));
 
 export const linesRelations = relations(lines, ({ many }) => ({
+  assignedUsers: many(users),
   devices: many(devices),
   receivings: many(receivings),
   sessions: many(receivingSessions),

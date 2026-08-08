@@ -13,8 +13,8 @@ import {
   sensorEvents,
   auditLogs,
 } from '@/db/schema';
-import { requirePermission } from '@/lib/auth';
-import { validationError, notFoundError, internalError, createErrorResponse } from '@/lib/errors';
+import { requirePermission, checkOperatorLineAccess, isOperatorOnly } from '@/lib/auth';
+import { validationError, notFoundError, internalError, createErrorResponse, forbiddenError } from '@/lib/errors';
 import { createAuditLog } from '@/lib/audit';
 import { eq, and, sql, desc, inArray } from 'drizzle-orm';
 
@@ -39,7 +39,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { errorResponse } = await requirePermission(req, 'receiving:view');
+  const { user, errorResponse } = await requirePermission(req, 'receiving:view');
   if (errorResponse) return errorResponse;
 
   const { id } = await params;
@@ -69,6 +69,17 @@ export async function GET(
     if (!found) {
       return notFoundError('Surat Jalan (Receiving) tidak ditemukan.');
     }
+
+    // ── Operator line restriction ─────────────────────────────────────────
+    if (isOperatorOnly(user!)) {
+      if (!user!.assignedLineId) {
+        return forbiddenError('Operator belum ditugaskan pada jalur (Line) mana pun.');
+      }
+      if (found.receiving.lineId && found.receiving.lineId !== user!.assignedLineId) {
+        return forbiddenError('Akses ditolak. Surat Jalan ini bukan milik jalur (Line) Anda.');
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────
 
     const sessions = await db
       .select()

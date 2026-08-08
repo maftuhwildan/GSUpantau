@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/db';
 import { receivings, lines, trucks, drivers, suppliers, users, receivingSessions, sensorEvents } from '@/db/schema';
-import { requirePermission } from '@/lib/auth';
-import { validationError, internalError } from '@/lib/errors';
+import { requirePermission, checkOperatorLineAccess, isOperatorOnly } from '@/lib/auth';
+import { validationError, internalError, forbiddenError } from '@/lib/errors';
 import { createAuditLog } from '@/lib/audit';
 import { eq, and, gte, lte, or, ilike, asc, desc, inArray, sql } from 'drizzle-orm';
 
@@ -30,10 +30,22 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const statusParam = searchParams.get('status');
-    const lineIdParam = searchParams.get('line_id');
+    let lineIdParam = searchParams.get('line_id');
     const dateFromParam = searchParams.get('date_from');
     const dateToParam = searchParams.get('date_to');
     const searchParam = searchParams.get('search');
+
+    // ── Operator line restriction ─────────────────────────────────────────
+    const lineAccessError = checkOperatorLineAccess(user!, lineIdParam);
+    if (lineAccessError) return lineAccessError;
+
+    if (isOperatorOnly(user!)) {
+      if (!user!.assignedLineId) {
+        return forbiddenError('Operator belum ditugaskan pada jalur (Line) mana pun.');
+      }
+      lineIdParam = user!.assignedLineId;
+    }
+    // ─────────────────────────────────────────────────────────────────────
 
     const conditions = [];
 
