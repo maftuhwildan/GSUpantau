@@ -236,7 +236,11 @@ Rules:
 
 - Only `WAITING` receiving can be started.
 - One line can have only one active `COUNTING` session.
+- One receiving can have only one active `COUNTING` session across all lines.
+- A provided `line_id` must match the receiving line when one is already assigned.
+- The target line must exist and have status `ACTIVE`.
 - Start must run in a transaction.
+- Concurrent start requests have exactly one winner; losing requests return HTTP `409`.
 - Create session.
 - Update receiving to `COUNTING`.
 - Write audit log.
@@ -276,6 +280,8 @@ Rules:
 
 - Requires active `COUNTING` session.
 - Finish must run in a transaction.
+- Finish serializes against sensor assignment on the same line.
+- Concurrent finish/cancel requests have exactly one winner.
 - Update session to `COMPLETED`.
 - Update receiving to `COMPLETED`.
 - Calculate derived actual for response.
@@ -315,6 +321,8 @@ Body:
 Rules:
 
 - Requires reason.
+- Cancel serializes against finish and sensor assignment on the same line.
+- A cancelled session keeps its immutable sensor events and returns the receiving to `WAITING`.
 - Write audit log.
 - Broadcast WebSocket update.
 
@@ -350,7 +358,8 @@ Body:
   "line_id": "LINE-01",
   "events": [
     {
-      "event_id": "LINE01-00001001",
+      "event_id": "ESP32-LINE-01:550e8400-e29b-41d4-a716-446655440000:1001",
+      "boot_id": "550e8400-e29b-41d4-a716-446655440000",
       "sequence": 1001,
       "event_type": "DETECTION",
       "device_time": "2026-08-07T10:15:32.441+07:00",
@@ -366,12 +375,17 @@ Rules:
 - Validate device belongs to line.
 - Insert events idempotently.
 - `event_id` duplicate must not increment actual.
-- `(device_id, sequence)` duplicate must not increment actual.
+- `(device_id, boot_id, sequence)` duplicate must not increment actual, even if retry timestamp changes.
+- A new `boot_id` may restart `sequence` from zero after device reboot.
+- `device_time` must not be used as an event uniqueness key.
 - `DETECTION` during active session becomes `ASSIGNED`.
 - `DETECTION` without active session becomes `UNASSIGNED`.
+- Assignment is determined while holding the same line lock used by session start/finish/cancel.
+- Events committed before finish are included in final actual; events committed after finish are `UNASSIGNED`.
 - `HEARTBEAT` and `DEVICE_RESTART` do not increment actual.
 - Preserve raw payload.
 - Broadcast updates for active session counter and sensor activity.
+- Broadcast only after the database transaction commits.
 
 Response:
 
@@ -382,7 +396,9 @@ Response:
   "rejected": 0,
   "events": [
     {
-      "event_id": "LINE01-00001001",
+      "event_id": "ESP32-LINE-01:550e8400-e29b-41d4-a716-446655440000:1001",
+      "boot_id": "550e8400-e29b-41d4-a716-446655440000",
+      "sequence": 1001,
       "status": "ACCEPTED",
       "assignment_status": "ASSIGNED",
       "session_id": "uuid"

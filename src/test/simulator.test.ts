@@ -19,6 +19,8 @@ describe('Sensor Simulator Integration (Batch 7)', () => {
 
   const device1Secret = 'secret-device-key-01';
   const device2Secret = 'secret-device-key-02';
+  const device1BootId = 'simulator-boot-device-01';
+  const device2BootId = 'simulator-boot-device-02';
 
   beforeAll(async () => {
     await runSeed();
@@ -118,6 +120,7 @@ describe('Sensor Simulator Integration (Batch 7)', () => {
           events: [
             {
               event_id: eventId,
+              boot_id: device1BootId,
               sequence: 80001,
               event_type: 'DETECTION',
               device_time: new Date().toISOString(),
@@ -152,6 +155,7 @@ describe('Sensor Simulator Integration (Batch 7)', () => {
           events: [
             {
               event_id: eventId,
+              boot_id: device2BootId,
               sequence: 90001,
               event_type: 'DETECTION',
               device_time: new Date().toISOString(),
@@ -187,6 +191,7 @@ describe('Sensor Simulator Integration (Batch 7)', () => {
           events: [
             {
               event_id: duplicateEventId,
+              boot_id: device1BootId,
               sequence: duplicateSeq,
               event_type: 'DETECTION',
               device_time: new Date().toISOString(),
@@ -219,6 +224,7 @@ describe('Sensor Simulator Integration (Batch 7)', () => {
           events: [
             {
               event_id: duplicateEventId,
+              boot_id: device1BootId,
               sequence: duplicateSeq,
               event_type: 'DETECTION',
               device_time: new Date().toISOString(),
@@ -258,6 +264,7 @@ describe('Sensor Simulator Integration (Batch 7)', () => {
           events: [
             {
               event_id: delayedEventId,
+              boot_id: device1BootId,
               sequence: 88899,
               event_type: 'DETECTION',
               device_time: tenMinutesAgo,
@@ -316,6 +323,7 @@ describe('Sensor Simulator Integration (Batch 7)', () => {
           events: [
             {
               event_id: restartEventId,
+              boot_id: `${device1BootId}-restart`,
               sequence: 1,
               event_type: 'DEVICE_RESTART',
               device_time: new Date().toISOString(),

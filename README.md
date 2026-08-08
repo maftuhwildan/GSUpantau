@@ -29,13 +29,55 @@ Sistem Penghitung Penerimaan Ayam Rumah Potong Ayam (RPA) berbasis Next.js App R
 
 ## Cara Menjalankan Aplikasi
 
-### 1. Install Dependensi
+### Arsitektur Database Development
+
+PostgreSQL development berjalan melalui Docker Compose di VPS. Laptop pengembang menjalankan aplikasi Next.js secara lokal dan mengakses database melalui jaringan privat Tailscale. PostgreSQL tidak perlu diinstal atau dinyalakan di laptop.
+
+Gunakan database dan user yang terpisah dari staging maupun production. Port PostgreSQL `5432` hanya boleh dapat diakses melalui Tailscale, bukan internet publik.
+
+### 1. Hubungkan Tailscale dan Siapkan Environment
+
+Salin `.env.example` menjadi `.env`, lalu isi `DATABASE_URL` menggunakan hostname MagicDNS atau IP Tailscale VPS:
+
+```env
+DATABASE_URL=postgres://poultry_dev:PASSWORD@NAMA-VPS-TAILSCALE:5432/poultry_receiving_dev
+SESSION_SECRET=ganti-dengan-secret-minimal-32-karakter
+APP_URL=http://localhost:3000
+SITE_TIMEZONE=Asia/Jakarta
+NODE_ENV=development
+```
+
+Periksa koneksi dari PowerShell:
+
+```powershell
+Test-NetConnection NAMA-VPS-TAILSCALE -Port 5432
+```
+
+Jangan commit file `.env` atau kredensial database asli.
+
+### 2. Install Dependensi
 
 ```bash
 npm install
 ```
 
-### 2. Jalankan Mode Pengembang (Development)
+### 3. Jalankan Migration
+
+```bash
+npm run db:migrate
+```
+
+Migration Drizzle hanya menjalankan migration yang belum tercatat. Buat backup terlebih dahulu jika database sudah berisi data operasional.
+
+Jalankan seed hanya pada database development khusus jika memang diperlukan:
+
+```bash
+npm run db:seed
+```
+
+Jangan menjalankan seed atau automated test dengan `DATABASE_URL` production.
+
+### 4. Jalankan Mode Pengembang
 
 ```bash
 npm run dev
@@ -43,7 +85,7 @@ npm run dev
 
 Aplikasi akan berjalan pada [http://localhost:3000](http://localhost:3000).
 
-### 3. Perintah Validasi
+### 5. Perintah Validasi
 
 ```bash
 # Validasi Linter
@@ -51,6 +93,9 @@ npm run lint
 
 # Validasi Tipe Data TypeScript
 npm run typecheck
+
+# Jalankan test
+npm test
 
 # Build Produksi Next.js
 npm run build

@@ -184,7 +184,7 @@ If a cached count is added later, it must be marked derived and reconstructable 
 Constraints:
 
 - One active `COUNTING` session per line.
-- `receiving_id` should not have multiple active sessions.
+- One active `COUNTING` session per `receiving_id`.
 - Session line must match receiving line when receiving line is set.
 
 PostgreSQL partial unique index:
@@ -193,12 +193,18 @@ PostgreSQL partial unique index:
 CREATE UNIQUE INDEX one_active_session_per_line
 ON receiving_sessions (line_id)
 WHERE status = 'COUNTING';
+
+CREATE UNIQUE INDEX one_active_session_per_receiving
+ON receiving_sessions (receiving_id)
+WHERE status = 'COUNTING';
 ```
 
 Rules:
 
 - Only `WAITING` receiving can be started.
 - Start session must be transactional.
+- Start, finish, cancel, and sensor assignment must serialize on the related line row.
+- Concurrent session transitions have exactly one winner; losing requests return a conflict without partial writes.
 - Starting a session changes receiving status to `COUNTING`.
 - Finishing a session changes session status to `COMPLETED` and receiving status to `COMPLETED`.
 - Finish session must be transactional.
@@ -213,6 +219,7 @@ Fields:
 ```text
 id
 event_id
+boot_id
 device_id
 line_id
 sequence
@@ -253,14 +260,19 @@ Constraints:
 
 ```text
 event_id UNIQUE
-(device_id, sequence) UNIQUE
+(device_id, boot_id, sequence) UNIQUE
 ```
 
 Rules:
 
-- Duplicate event must not increase actual count.
+- A retry with the same `event_id` must not increase actual count.
+- A retry with the same `(device_id, boot_id, sequence)` must not increase actual count, even if its timestamp or `event_id` changes.
+- A new `boot_id` may restart `sequence` from zero after an ESP32 reboot.
+- `device_time` is diagnostic/audit metadata and must not determine event uniqueness.
 - Detection event on a line with active session becomes `ASSIGNED`.
 - Detection event on a line with no active session becomes `UNASSIGNED`.
+- Active-session lookup and event insertion must run under the same line lock used by session transitions.
+- An event committed before finish is included in the final count; an event committed after finish is `UNASSIGNED`.
 - Heartbeat and restart events do not increase actual count.
 - Device line must match event line.
 - Raw payload must be preserved.
@@ -460,8 +472,8 @@ Waiting receiving actual should display `null`, `-`, or `Belum dihitung`, not ze
 3. Completed receiving cannot be started again in MVP.
 4. Finish requires an active session.
 5. Event can only be assigned to a session on the same line.
-6. Duplicate event does not increase actual count.
+6. Duplicate event within the same device boot does not increase actual count.
 7. Actual count is not editable through API.
-8. Start and finish must be transactional.
+8. Start, finish, cancel, and event assignment must be transactional and serialized per line.
 9. Raw sensor event is immutable through normal app APIs.
 10. Important changes must write audit logs.

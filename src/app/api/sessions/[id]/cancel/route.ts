@@ -4,9 +4,10 @@ import { db } from '@/db';
 import { receivings, receivingSessions } from '@/db/schema';
 import { requirePermission } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/audit';
-import { createErrorResponse, validationError, notFoundError } from '@/lib/errors';
+import { AppError, buildErrorResponse, createErrorResponse, validationError, notFoundError } from '@/lib/errors';
+import { lockCountingLine } from '@/lib/counting-lock';
 import { wsBroadcaster } from '@/lib/ws';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 const cancelSessionSchema = z.object({
   reason: z.string().min(1, { message: 'Alasan pembatalan sesi wajib diisi' }),
@@ -49,6 +50,11 @@ export async function POST(
     }
 
     const updatedSession = await db.transaction(async (tx) => {
+      const lockedLine = await lockCountingLine(tx, session.lineId);
+      if (!lockedLine) {
+        throw new AppError('NOT_FOUND', 'Jalur (Line) sesi tidak ditemukan', 404);
+      }
+
       const [cancSession] = await tx
         .update(receivingSessions)
         .set({
@@ -58,16 +64,43 @@ export async function POST(
           cancellationReason: reason,
           updatedAt: new Date(),
         })
-        .where(eq(receivingSessions.id, session.id))
+        .where(
+          and(
+            eq(receivingSessions.id, session.id),
+            eq(receivingSessions.status, 'COUNTING')
+          )
+        )
         .returning();
 
-      await tx
+      if (!cancSession) {
+        throw new AppError(
+          'CONFLICT',
+          'Sesi sudah diselesaikan atau dibatalkan oleh request lain',
+          409
+        );
+      }
+
+      const [waitingReceiving] = await tx
         .update(receivings)
         .set({
           status: 'WAITING',
           updatedAt: new Date(),
         })
-        .where(eq(receivings.id, session.receivingId));
+        .where(
+          and(
+            eq(receivings.id, session.receivingId),
+            eq(receivings.status, 'COUNTING')
+          )
+        )
+        .returning();
+
+      if (!waitingReceiving) {
+        throw new AppError(
+          'CONFLICT',
+          'Surat Jalan sudah diubah oleh request lain',
+          409
+        );
+      }
 
       await recordAuditLog(
         {
@@ -99,6 +132,9 @@ export async function POST(
       },
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      return buildErrorResponse(error);
+    }
     console.error('POST /api/sessions/:id/cancel error:', error);
     return createErrorResponse('INTERNAL_ERROR', 'Terjadi kesalahan server', 500);
   }

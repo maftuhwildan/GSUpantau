@@ -12,7 +12,8 @@ Styling          : Tailwind CSS
 UI components    : shadcn/ui
 Icons            : lucide-react
 Database         : PostgreSQL
-Local DB         : Docker Compose
+Development DB   : Docker Compose on VPS
+Private DB access: Tailscale
 ORM              : Drizzle ORM
 Validation       : Zod
 Auth             : Local session auth
@@ -152,7 +153,11 @@ The backend remains the source of truth. WebSocket messages are notifications, n
 
 Use PostgreSQL through `DATABASE_URL`.
 
-Development must use Docker Compose. Production/staging can use PostgreSQL in VPS/container with the same connection string shape.
+The current development database runs as a PostgreSQL Docker Compose service on the VPS. Developer laptops connect to it through Tailscale; PostgreSQL does not need to be installed or started locally.
+
+Use separate database names and credentials for development, test, staging, and production. Tests and seed commands must never target the production database.
+
+PostgreSQL port access must be restricted to the Tailscale network or the internal Docker network. Do not expose port `5432` to the public internet.
 
 Use Drizzle migrations for schema changes.
 

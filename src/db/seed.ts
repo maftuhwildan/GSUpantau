@@ -298,6 +298,7 @@ export async function runSeed() {
   for (let seq = 1; seq <= 15; seq++) {
     eventsToInsert.push({
       eventId: `EVT-LINE01-COMPLETED-${seq}`,
+      bootId: 'seed-boot-line-01',
       deviceId: device1.id,
       lineId: line1.id,
       sequence: seq,
@@ -314,6 +315,7 @@ export async function runSeed() {
   for (let seq = 16; seq <= 30; seq++) {
     eventsToInsert.push({
       eventId: `EVT-LINE01-ACTIVE-${seq}`,
+      bootId: 'seed-boot-line-01',
       deviceId: device1.id,
       lineId: line1.id,
       sequence: seq,
@@ -330,6 +332,7 @@ export async function runSeed() {
   for (let seq = 1; seq <= 5; seq++) {
     eventsToInsert.push({
       eventId: `EVT-LINE02-UNASSIGNED-${seq}`,
+      bootId: 'seed-boot-line-02',
       deviceId: device2.id,
       lineId: line2.id,
       sequence: seq,
@@ -345,6 +348,7 @@ export async function runSeed() {
 
   eventsToInsert.push({
     eventId: 'EVT-LINE01-HEARTBEAT-1',
+    bootId: 'seed-boot-line-01',
     deviceId: device1.id,
     lineId: line1.id,
     sequence: 31,

@@ -16,6 +16,8 @@ describe('Device API & Sensor Events Ingestion (Batch 6)', () => {
 
   const device1Secret = 'secret-device-key-01';
   const device2Secret = 'secret-device-key-02';
+  const device1BootId = 'test-boot-device-01';
+  const device2BootId = 'test-boot-device-02';
 
   beforeAll(async () => {
     await runSeed();
@@ -40,6 +42,7 @@ describe('Device API & Sensor Events Ingestion (Batch 6)', () => {
           events: [
             {
               event_id: 'TEST-NOAUTH-01',
+              boot_id: device1BootId,
               sequence: 999901,
               event_type: 'DETECTION',
               device_time: new Date().toISOString(),
@@ -67,6 +70,7 @@ describe('Device API & Sensor Events Ingestion (Batch 6)', () => {
           events: [
             {
               event_id: 'TEST-BADSECRET-01',
+              boot_id: device1BootId,
               sequence: 999902,
               event_type: 'DETECTION',
               device_time: new Date().toISOString(),
@@ -94,6 +98,7 @@ describe('Device API & Sensor Events Ingestion (Batch 6)', () => {
           events: [
             {
               event_id: 'TEST-UNREG-01',
+              boot_id: device1BootId,
               sequence: 999903,
               event_type: 'DETECTION',
               device_time: new Date().toISOString(),
@@ -122,6 +127,7 @@ describe('Device API & Sensor Events Ingestion (Batch 6)', () => {
           events: [
             {
               event_id: 'TEST-MISMATCH-01',
+              boot_id: device1BootId,
               sequence: 999904,
               event_type: 'DETECTION',
               device_time: new Date().toISOString(),
@@ -160,6 +166,7 @@ describe('Device API & Sensor Events Ingestion (Batch 6)', () => {
           events: [
             {
               event_id: eventId,
+              boot_id: device2BootId,
               sequence,
               event_type: 'DETECTION',
               device_time: new Date().toISOString(),
@@ -225,6 +232,7 @@ describe('Device API & Sensor Events Ingestion (Batch 6)', () => {
           events: [
             {
               event_id: eventId,
+              boot_id: device1BootId,
               sequence,
               event_type: 'DETECTION',
               device_time: new Date().toISOString(),
@@ -253,9 +261,10 @@ describe('Device API & Sensor Events Ingestion (Batch 6)', () => {
       expect(savedEvt.sessionId).toBe(activeSession.id);
     });
 
-    it('should idempotently handle duplicate events without double counting', async () => {
+    it('should reject the same sequence within one boot but accept it after a new boot', async () => {
       const eventId = `EVT-DUP-${Date.now()}`;
       const sequence = Math.floor(Math.random() * 800000) + 100000;
+      const bootId = `BOOT-DUP-${Date.now()}`;
 
       const payload = {
         device_id: device1.deviceCode,
@@ -263,6 +272,7 @@ describe('Device API & Sensor Events Ingestion (Batch 6)', () => {
         events: [
           {
             event_id: eventId,
+            boot_id: bootId,
             sequence,
             event_type: 'DETECTION',
             device_time: new Date().toISOString(),
@@ -287,14 +297,26 @@ describe('Device API & Sensor Events Ingestion (Batch 6)', () => {
       expect(json1.accepted).toBe(1);
       expect(json1.duplicates).toBe(0);
 
-      // Duplicate upload with identical event_id & sequence
+      // A rebuilt retry with a different event_id and later timestamp is still
+      // the same physical detection inside the same boot.
+      const retryPayload = {
+        ...payload,
+        events: [
+          {
+            ...payload.events[0],
+            event_id: `${eventId}-rebuilt-retry`,
+            device_time: new Date(Date.now() + 1000).toISOString(),
+          },
+        ],
+      };
+
       const req2 = new NextRequest('http://localhost:3000/api/device/events', {
         method: 'POST',
         headers: {
           authorization: `Bearer ${device1Secret}`,
           'content-type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(retryPayload),
       });
 
       const res2 = await eventsHandler(req2);
@@ -304,13 +326,45 @@ describe('Device API & Sensor Events Ingestion (Batch 6)', () => {
       expect(json2.duplicates).toBe(1);
       expect(json2.events[0].status).toBe('DUPLICATE');
 
-      // Check DB count for eventId
+      // The boot-scoped sequence exists only once.
       const matching = await db
         .select()
         .from(sensorEvents)
-        .where(eq(sensorEvents.eventId, eventId));
+        .where(
+          and(
+            eq(sensorEvents.deviceId, device1.id),
+            eq(sensorEvents.bootId, bootId),
+            eq(sensorEvents.sequence, sequence)
+          )
+        );
 
       expect(matching.length).toBe(1);
+
+      // After a device reboot, sequence may restart and must be accepted.
+      const rebootPayload = {
+        ...payload,
+        events: [
+          {
+            ...payload.events[0],
+            event_id: `${eventId}-new-boot`,
+            boot_id: `${bootId}-restarted`,
+          },
+        ],
+      };
+      const rebootReq = new NextRequest('http://localhost:3000/api/device/events', {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${device1Secret}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(rebootPayload),
+      });
+
+      const rebootRes = await eventsHandler(rebootReq);
+      expect(rebootRes.status).toBe(200);
+      const rebootJson = await rebootRes.json();
+      expect(rebootJson.accepted).toBe(1);
+      expect(rebootJson.duplicates).toBe(0);
     });
 
     it('should not increment actual count for HEARTBEAT or DEVICE_RESTART events', async () => {
@@ -329,12 +383,14 @@ describe('Device API & Sensor Events Ingestion (Batch 6)', () => {
           events: [
             {
               event_id: eventIdHb,
+              boot_id: device1BootId,
               sequence: 999101,
               event_type: 'HEARTBEAT',
               device_time: new Date().toISOString(),
             },
             {
               event_id: eventIdRestart,
+              boot_id: `${device1BootId}-restart`,
               sequence: 999102,
               event_type: 'DEVICE_RESTART',
               device_time: new Date().toISOString(),

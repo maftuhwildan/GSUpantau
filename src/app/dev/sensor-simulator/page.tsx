@@ -62,7 +62,8 @@ export default function SensorSimulatorPage() {
   const [selectedDeviceCode, setSelectedDeviceCode] = useState<string>("");
   const [deviceSecret, setDeviceSecret] = useState<string>("");
   
-  const [sequence, setSequence] = useState<number>(1000);
+  const [bootId, setBootId] = useState<string>("");
+  const [sequence, setSequence] = useState<number>(0);
   const [autoDetecting, setAutoDetecting] = useState<boolean>(false);
   const [autoHeartbeat, setAutoHeartbeat] = useState<boolean>(true);
   const [heartbeatStatus, setHeartbeatStatus] = useState<"ONLINE" | "OFFLINE">("ONLINE");
@@ -76,12 +77,15 @@ export default function SensorSimulatorPage() {
 
   const [lastSentEvent, setLastSentEvent] = useState<{
     eventId: string;
+    bootId: string;
     sequence: number;
+    deviceTime: string;
   } | null>(null);
 
-  // Initialize sequence safely on client side
+  // A boot gets its own identity, while sequence only needs to live in RAM.
   useEffect(() => {
-    setSequence(Math.floor(Date.now() / 1000));
+    setBootId(crypto.randomUUID());
+    setSequence(0);
   }, []);
 
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -152,6 +156,9 @@ export default function SensorSimulatorPage() {
 
   // Sync selected line / device options
   const handleLineChange = (lineCode: string) => {
+    setBootId(crypto.randomUUID());
+    setSequence(0);
+    setLastSentEvent(null);
     setSelectedLineCode(lineCode);
     const foundLine = options.find((l) => l.lineCode === lineCode);
     if (foundLine && foundLine.devices.length > 0) {
@@ -165,6 +172,9 @@ export default function SensorSimulatorPage() {
   };
 
   const handleDeviceChange = (deviceCode: string) => {
+    setBootId(crypto.randomUUID());
+    setSequence(0);
+    setLastSentEvent(null);
     setSelectedDeviceCode(deviceCode);
     const foundLine = options.find((l) => l.lineCode === selectedLineCode);
     const foundDev = foundLine?.devices.find((d) => d.deviceCode === deviceCode);
@@ -211,7 +221,7 @@ export default function SensorSimulatorPage() {
     isDuplicate: boolean = false,
     isDelayed: boolean = false
   ) => {
-    if (!selectedDeviceCode || !selectedLineCode) return;
+    if (!selectedDeviceCode || !selectedLineCode || !bootId) return;
 
     let currentSeq = sequence;
     const eventsPayload = [];
@@ -224,11 +234,11 @@ export default function SensorSimulatorPage() {
       if (isDuplicate && lastSentEvent) {
         eventId = lastSentEvent.eventId;
         seqNum = lastSentEvent.sequence;
-        deviceTime = new Date().toISOString();
+        deviceTime = lastSentEvent.deviceTime;
       } else {
         currentSeq += 1;
         seqNum = currentSeq;
-        eventId = `${selectedDeviceCode}-${Date.now()}-${seqNum}`;
+        eventId = `${selectedDeviceCode}:${bootId}:${seqNum}`;
         
         if (isDelayed) {
           // Delayed by 10 minutes
@@ -240,6 +250,7 @@ export default function SensorSimulatorPage() {
 
       eventsPayload.push({
         event_id: eventId,
+        boot_id: isDuplicate && lastSentEvent ? lastSentEvent.bootId : bootId,
         sequence: seqNum,
         event_type: "DETECTION" as const,
         device_time: deviceTime,
@@ -247,7 +258,7 @@ export default function SensorSimulatorPage() {
       });
 
       if (!isDuplicate) {
-        setLastSentEvent({ eventId, sequence: seqNum });
+        setLastSentEvent({ eventId, bootId, sequence: seqNum, deviceTime });
       }
     }
 
@@ -323,14 +334,22 @@ export default function SensorSimulatorPage() {
     if (!selectedDeviceCode || !selectedLineCode) return;
 
     const newSeq = 0; // Simulate real hardware reset to 0
+    const newBootId = crypto.randomUUID();
 
-    const eventId = `${selectedDeviceCode}-RESTART-${Date.now()}`;
+    // Reboot changes identity even if the restart notification cannot reach
+    // the server. Future detections must still use the new boot namespace.
+    setBootId(newBootId);
+    setSequence(newSeq);
+    setLastSentEvent(null);
+
+    const eventId = `${selectedDeviceCode}:${newBootId}:${newSeq}`;
     const body = {
       device_id: selectedDeviceCode,
       line_id: selectedLineCode,
       events: [
         {
           event_id: eventId,
+          boot_id: newBootId,
           sequence: newSeq,
           event_type: "DEVICE_RESTART",
           device_time: new Date().toISOString(),
@@ -350,9 +369,6 @@ export default function SensorSimulatorPage() {
       });
 
       const resJson = await res.json();
-      if (res.ok) {
-        setSequence(newSeq);
-      }
       addLog("Perangkat Restart", res.status, body, resJson, res.ok);
     } catch (err: any) {
       addLog("Restart Error", 500, body, { error: err.message }, false);
@@ -484,6 +500,12 @@ export default function SensorSimulatorPage() {
               </div>
 
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-1">
+                <div className="flex justify-between gap-3 text-slate-600">
+                  <span>Boot ID:</span>
+                  <span className="font-mono font-semibold text-slate-900 truncate" title={bootId}>
+                    {bootId || "Menyiapkan..."}
+                  </span>
+                </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Sequence Saat Ini:</span>
                   <span className="font-mono font-semibold text-slate-900">{sequence}</span>

@@ -16,6 +16,9 @@ The goal is to support reconciliation, reduce manipulation risk, expose variance
 - The sensor is located after weighing and hanging, before slaughter.
 - The sensor detects chicken passage only as `+1`.
 - The sensor does not know the truck or batch source.
+- Device sequence numbers may restart from zero after an ESP32 reboot.
+- Each ESP32 boot must have a new `boot_id`; retries inside the same boot reuse the same event identity.
+- Device timestamps are audit metadata, not event uniqueness keys.
 - Actual count is derived from sensor events, not manual input.
 - Data from delivery notes is entered manually by Admin.
 - The system must support multiple lines by design.

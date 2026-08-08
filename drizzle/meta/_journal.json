@@ -15,6 +15,20 @@
       "when": 1786090367467,
       "tag": "0001_wandering_boom_boom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786164053310,
+      "tag": "0002_remarkable_lizard",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786167743688,
+      "tag": "0003_session_integrity",
+      "breakpoints": true
     }
   ]
 }

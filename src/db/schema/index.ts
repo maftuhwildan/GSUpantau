@@ -154,12 +154,14 @@ export const receivingSessions = pgTable('receiving_sessions', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   oneActiveSessionPerLine: uniqueIndex('one_active_session_per_line').on(table.lineId).where(sql`status = 'COUNTING'`),
+  oneActiveSessionPerReceiving: uniqueIndex('one_active_session_per_receiving').on(table.receivingId).where(sql`status = 'COUNTING'`),
 }));
 
 // 12. Sensor Events
 export const sensorEvents = pgTable('sensor_events', {
   id: uuid('id').defaultRandom().primaryKey(),
   eventId: varchar('event_id', { length: 100 }).notNull().unique(),
+  bootId: varchar('boot_id', { length: 100 }).notNull(),
   deviceId: uuid('device_id').notNull().references(() => devices.id),
   lineId: uuid('line_id').notNull().references(() => lines.id),
   sequence: integer('sequence').notNull(),
@@ -171,7 +173,13 @@ export const sensorEvents = pgTable('sensor_events', {
   eventMode: varchar('event_mode', { length: 20 }).notNull().default('PRODUCTION'), // 'PRODUCTION', 'TEST', 'MAINTENANCE'
   rawPayload: jsonb('raw_payload').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => ({
+  deviceBootSequenceUnique: uniqueIndex('device_boot_sequence_unique').on(
+    table.deviceId,
+    table.bootId,
+    table.sequence
+  ),
+}));
 
 // 13. Reconciliation Reviews
 export const reconciliationReviews = pgTable('reconciliation_reviews', {

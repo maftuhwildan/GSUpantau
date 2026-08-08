@@ -4,7 +4,8 @@ import { db } from '@/db';
 import { receivings, receivingSessions, sensorEvents, reconciliationReviews } from '@/db/schema';
 import { requirePermission } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/audit';
-import { createErrorResponse, validationError, notFoundError } from '@/lib/errors';
+import { AppError, buildErrorResponse, createErrorResponse, validationError, notFoundError } from '@/lib/errors';
+import { lockCountingLine } from '@/lib/counting-lock';
 import { wsBroadcaster } from '@/lib/ws';
 import { eq, and, count } from 'drizzle-orm';
 
@@ -49,19 +50,15 @@ export async function POST(
       );
     }
 
-    // Query receiving
-    const [receiving] = await db
-      .select()
-      .from(receivings)
-      .where(eq(receivings.id, session.receivingId));
-
-    if (!receiving) {
-      return notFoundError('Data Surat Jalan terkait tidak ditemukan');
-    }
-
     const { actualCount, differenceCount, differencePercent, updatedSession } = await db.transaction(
       async (tx) => {
-        // 1. Update session
+        const lockedLine = await lockCountingLine(tx, session.lineId);
+        if (!lockedLine) {
+          throw new AppError('NOT_FOUND', 'Jalur (Line) sesi tidak ditemukan', 404);
+        }
+
+        // Conditional transition makes concurrent finish/cancel requests have
+        // exactly one winner after taking the shared line lock.
         const [completedSession] = await tx
           .update(receivingSessions)
           .set({
@@ -70,19 +67,33 @@ export async function POST(
             finishedBy: user!.id,
             updatedAt: new Date(),
           })
-          .where(eq(receivingSessions.id, session.id))
+          .where(
+            and(
+              eq(receivingSessions.id, session.id),
+              eq(receivingSessions.status, 'COUNTING')
+            )
+          )
           .returning();
 
-        // 2. Update receiving
-        await tx
-          .update(receivings)
-          .set({
-            status: 'COMPLETED',
-            updatedAt: new Date(),
-          })
+        if (!completedSession) {
+          throw new AppError(
+            'CONFLICT',
+            'Sesi sudah diselesaikan atau dibatalkan oleh request lain',
+            409
+          );
+        }
+
+        const [receiving] = await tx
+          .select()
+          .from(receivings)
           .where(eq(receivings.id, session.receivingId));
 
-        // 3. Derived actual count
+        if (!receiving) {
+          throw new AppError('NOT_FOUND', 'Data Surat Jalan terkait tidak ditemukan', 404);
+        }
+
+        // The line remains locked while the final count is derived, so sensor
+        // assignment cannot append events to this session after reconciliation.
         const [cntResult] = await tx
           .select({ total: count() })
           .from(sensorEvents)
@@ -105,6 +116,30 @@ export async function POST(
 
         // 4. Record reconciliation review
         const reconStatus = diffCount === 0 ? 'MATCHED' : 'REVIEW_REQUIRED';
+
+        const [completedReceiving] = await tx
+          .update(receivings)
+          .set({
+            status: 'COMPLETED',
+            reconciliationStatus: reconStatus,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(receivings.id, session.receivingId),
+              eq(receivings.status, 'COUNTING')
+            )
+          )
+          .returning();
+
+        if (!completedReceiving) {
+          throw new AppError(
+            'CONFLICT',
+            'Surat Jalan sudah diubah oleh request lain',
+            409
+          );
+        }
+
         await tx.insert(reconciliationReviews).values({
           receivingId: session.receivingId,
           sessionId: session.id,
@@ -160,6 +195,9 @@ export async function POST(
       },
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      return buildErrorResponse(error);
+    }
     console.error('POST /api/sessions/:id/finish error:', error);
     return createErrorResponse('INTERNAL_ERROR', 'Terjadi kesalahan server', 500);
   }
