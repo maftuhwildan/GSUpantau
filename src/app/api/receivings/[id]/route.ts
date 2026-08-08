@@ -92,25 +92,30 @@ export async function GET(
 
     // Calculate actual count from assigned sensor events
     let actualCount: number | null = null;
-    const isCountedOrCounting =
-      found.receiving.status === 'COUNTING' || found.receiving.status === 'COMPLETED';
+    const recStatus = found.receiving.status;
+    const isCountedOrCounting = recStatus === 'COUNTING' || recStatus === 'COMPLETED';
 
     if (isCountedOrCounting && sessions.length > 0) {
-      const sessionIds = sessions.map((s) => s.id);
-      const [countResult] = await db
-        .select({
-          count: sql<number>`count(*)::int`,
-        })
-        .from(sensorEvents)
-        .where(
-          and(
-            inArray(sensorEvents.sessionId, sessionIds),
-            eq(sensorEvents.eventType, 'DETECTION'),
-            eq(sensorEvents.eventMode, 'PRODUCTION'),
-            eq(sensorEvents.assignmentStatus, 'ASSIGNED')
-          )
-        );
-      actualCount = countResult?.count || 0;
+      const validSessions = sessions.filter((s) => s.status === recStatus);
+      if (validSessions.length > 0) {
+        const sessionIds = validSessions.map((s) => s.id);
+        const [countResult] = await db
+          .select({
+            count: sql<number>`count(*)::int`,
+          })
+          .from(sensorEvents)
+          .where(
+            and(
+              inArray(sensorEvents.sessionId, sessionIds),
+              eq(sensorEvents.eventType, 'DETECTION'),
+              eq(sensorEvents.eventMode, 'PRODUCTION'),
+              eq(sensorEvents.assignmentStatus, 'ASSIGNED')
+            )
+          );
+        actualCount = countResult?.count || 0;
+      } else {
+        actualCount = 0;
+      }
     }
 
     const differenceCount = actualCount !== null ? actualCount - found.receiving.manifestCount : null;

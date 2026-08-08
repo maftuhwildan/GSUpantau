@@ -93,18 +93,25 @@ export async function GET(req: NextRequest) {
 
     if (receivingIds.length > 0) {
       // Find session IDs associated with these receivings
+      // Only include COUNTING or COMPLETED sessions
       const sessions = await db
         .select({
           id: receivingSessions.id,
           receivingId: receivingSessions.receivingId,
+          status: receivingSessions.status,
         })
         .from(receivingSessions)
-        .where(inArray(receivingSessions.receivingId, receivingIds));
+        .where(
+          and(
+            inArray(receivingSessions.receivingId, receivingIds),
+            inArray(receivingSessions.status, ['COUNTING', 'COMPLETED'])
+          )
+        );
 
       if (sessions.length > 0) {
-        const sessionToReceivingMap: Record<string, string> = {};
+        const sessionToReceivingMap: Record<string, { receivingId: string; status: string }> = {};
         sessions.forEach((s) => {
-          sessionToReceivingMap[s.id] = s.receivingId;
+          sessionToReceivingMap[s.id] = { receivingId: s.receivingId, status: s.status };
         });
         const sessionIds = sessions.map((s) => s.id);
 
@@ -126,9 +133,10 @@ export async function GET(req: NextRequest) {
 
         eventCounts.forEach((ec) => {
           if (ec.sessionId) {
-            const recId = sessionToReceivingMap[ec.sessionId];
-            if (recId) {
-              actualCountsMap[recId] = (actualCountsMap[recId] || 0) + Number(ec.count);
+            const sessionInfo = sessionToReceivingMap[ec.sessionId];
+            if (sessionInfo) {
+              actualCountsMap[sessionInfo.receivingId] =
+                (actualCountsMap[sessionInfo.receivingId] || 0) + Number(ec.count);
             }
           }
         });
@@ -137,7 +145,7 @@ export async function GET(req: NextRequest) {
 
     const formattedList = list.map(({ receiving, line, truck, driver, supplier, creator }) => {
       const isCountedOrCounting = receiving.status === 'COUNTING' || receiving.status === 'COMPLETED';
-      const actualCount = isCountedOrCounting ? actualCountsMap[receiving.id] || 0 : null;
+      const actualCount = isCountedOrCounting ? (actualCountsMap[receiving.id] ?? 0) : null;
       const differenceCount = actualCount !== null ? actualCount - receiving.manifestCount : null;
       const differencePercent =
         actualCount !== null && receiving.manifestCount > 0

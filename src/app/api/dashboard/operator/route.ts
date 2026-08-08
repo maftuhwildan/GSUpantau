@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { lines, devices, receivingSessions, receivings, trucks, drivers, suppliers, sensorEvents } from '@/db/schema';
+import { lines, devices, receivingSessions, receivings, sensorEvents } from '@/db/schema';
 import { requirePermission } from '@/lib/auth';
 import { internalError } from '@/lib/errors';
-import { eq, and, sql, desc, gte, asc } from 'drizzle-orm';
+import { getStartOfTodayInSiteTimezone } from '@/lib/time';
+import { eq, and, sql, desc, gte, asc, or, isNull } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
   const { errorResponse } = await requirePermission(req, 'dashboard:view');
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     let lineId = searchParams.get('line_id');
-    
+
     if (!lineId) {
       const firstLine = await db.query.lines.findFirst();
       lineId = firstLine?.id || null;
@@ -29,67 +30,78 @@ export async function GET(req: NextRequest) {
       where: and(eq(receivingSessions.lineId, lineId), eq(receivingSessions.status, 'COUNTING')),
       with: {
         receiving: {
-          with: { truck: true, driver: true, supplier: true }
-        }
-      }
+          with: { truck: true, driver: true, supplier: true },
+        },
+      },
     });
 
     let actualCount = 0;
     let lastDetection = null;
     if (activeSession) {
-      const actualRes = await db.select({ 
-        count: sql<number>`count(*)::int`, 
-        lastTime: sql<Date>`max(${sensorEvents.deviceTime})` 
-      })
-      .from(sensorEvents)
-      .where(
-        and(
-          eq(sensorEvents.sessionId, activeSession.id),
-          eq(sensorEvents.eventType, 'DETECTION'),
-          eq(sensorEvents.eventMode, 'PRODUCTION'),
-          eq(sensorEvents.assignmentStatus, 'ASSIGNED')
-        )
-      );
+      const actualRes = await db
+        .select({
+          count: sql<number>`count(*)::int`,
+          lastTime: sql<Date>`max(${sensorEvents.receivedAt})`,
+        })
+        .from(sensorEvents)
+        .where(
+          and(
+            eq(sensorEvents.sessionId, activeSession.id),
+            eq(sensorEvents.eventType, 'DETECTION'),
+            eq(sensorEvents.eventMode, 'PRODUCTION'),
+            eq(sensorEvents.assignmentStatus, 'ASSIGNED')
+          )
+        );
       actualCount = actualRes[0]?.count || 0;
       lastDetection = actualRes[0]?.lastTime || null;
     }
 
-    const waitingQueue = await db.select({
-      id: receivings.id,
-      receivingNumber: receivings.receivingNumber,
-      deliveryNoteNumber: receivings.deliveryNoteNumber,
-      receivingDate: receivings.receivingDate,
-      queuePosition: receivings.queuePosition,
-      manifestCount: receivings.manifestCount,
-      status: receivings.status,
-      licensePlateSnapshot: receivings.licensePlateSnapshot,
-      supplierNameSnapshot: receivings.supplierNameSnapshot,
-      createdAt: receivings.createdAt,
-    })
-    .from(receivings)
-    .where(eq(receivings.status, 'WAITING'))
-    .orderBy(asc(receivings.queuePosition), desc(receivings.createdAt))
-    .limit(5);
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const detectionsStats = await db.select({
-      status: sensorEvents.assignmentStatus,
-      count: sql<number>`count(*)::int`
-    })
-    .from(sensorEvents)
-    .where(
-      and(
-        eq(sensorEvents.eventType, 'DETECTION'),
-        eq(sensorEvents.eventMode, 'PRODUCTION'),
-        gte(sensorEvents.receivedAt, today)
+    // Scope waiting queue to the selected line (assigned to line or unassigned to any line)
+    const waitingQueue = await db
+      .select({
+        id: receivings.id,
+        receivingNumber: receivings.receivingNumber,
+        deliveryNoteNumber: receivings.deliveryNoteNumber,
+        receivingDate: receivings.receivingDate,
+        queuePosition: receivings.queuePosition,
+        manifestCount: receivings.manifestCount,
+        status: receivings.status,
+        licensePlateSnapshot: receivings.licensePlateSnapshot,
+        supplierNameSnapshot: receivings.supplierNameSnapshot,
+        createdAt: receivings.createdAt,
+      })
+      .from(receivings)
+      .where(
+        and(
+          eq(receivings.status, 'WAITING'),
+          or(eq(receivings.lineId, lineId), isNull(receivings.lineId))
+        )
       )
-    )
-    .groupBy(sensorEvents.assignmentStatus);
+      .orderBy(asc(receivings.queuePosition), desc(receivings.createdAt))
+      .limit(5);
+
+    const startOfToday = getStartOfTodayInSiteTimezone();
+
+    // Scope detection statistics to the selected line and filter by receivedAt & SITE_TIMEZONE
+    const detectionsStats = await db
+      .select({
+        status: sensorEvents.assignmentStatus,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(sensorEvents)
+      .where(
+        and(
+          eq(sensorEvents.lineId, lineId),
+          eq(sensorEvents.eventType, 'DETECTION'),
+          eq(sensorEvents.eventMode, 'PRODUCTION'),
+          gte(sensorEvents.receivedAt, startOfToday)
+        )
+      )
+      .groupBy(sensorEvents.assignmentStatus);
 
     let assignedDetections = 0;
     let unassignedDetections = 0;
-    detectionsStats.forEach(stat => {
+    detectionsStats.forEach((stat) => {
       if (stat.status === 'ASSIGNED') assignedDetections += stat.count;
       if (stat.status === 'UNASSIGNED') unassignedDetections += stat.count;
     });
