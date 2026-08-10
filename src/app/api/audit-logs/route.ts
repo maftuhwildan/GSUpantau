@@ -2,8 +2,36 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { auditLogs, users } from '@/db/schema';
 import { requirePermission } from '@/lib/auth';
-import { internalError } from '@/lib/errors';
-import { eq, and, desc, asc, gte, lte } from 'drizzle-orm';
+import { internalError, validationError } from '@/lib/errors';
+import { getDateRangeFromStrings } from '@/lib/time';
+import { eq, and, desc, asc, gte, lt } from 'drizzle-orm';
+
+function sanitizeAuditData(data: any): any {
+  if (data === null || data === undefined) return data;
+  if (typeof data !== 'object') return data;
+
+  if (Array.isArray(data)) {
+    return data.map(sanitizeAuditData);
+  }
+
+  const sanitized: Record<string, any> = {};
+  for (const key of Object.keys(data)) {
+    const lowerKey = key.toLowerCase();
+    if (
+      lowerKey.includes('password') ||
+      lowerKey.includes('credentialhash') ||
+      lowerKey.includes('secret') ||
+      lowerKey.includes('token')
+    ) {
+      sanitized[key] = '[REDACTED]';
+    } else if (typeof data[key] === 'object' && data[key] !== null) {
+      sanitized[key] = sanitizeAuditData(data[key]);
+    } else {
+      sanitized[key] = data[key];
+    }
+  }
+  return sanitized;
+}
 
 export async function GET(req: NextRequest) {
   const { errorResponse } = await requirePermission(req, 'audit:view');
@@ -12,18 +40,34 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get('action');
-    const entityType = searchParams.get('entity_type');
+    const entityType = searchParams.get('entity_type') || searchParams.get('entityType');
+    const actorId = searchParams.get('actor_id') || searchParams.get('actorId');
     const dateFrom = searchParams.get('date_from');
     const dateTo = searchParams.get('date_to');
     const limitParam = parseInt(searchParams.get('limit') || '50', 10);
     const limit = isNaN(limitParam) ? 50 : Math.min(limitParam, 100);
 
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      return validationError('date_from tidak boleh lebih besar dari date_to.');
+    }
+
+    let start: Date | null = null;
+    let endExclusive: Date | null = null;
+    try {
+      const range = getDateRangeFromStrings(dateFrom, dateTo);
+      start = range.start;
+      endExclusive = range.endExclusive;
+    } catch (err: any) {
+      return validationError(err.message || 'Format tanggal tidak valid.');
+    }
+
     const conditions = [];
     if (action) conditions.push(eq(auditLogs.action, action));
     if (entityType) conditions.push(eq(auditLogs.entityType, entityType));
+    if (actorId) conditions.push(eq(auditLogs.actorId, actorId));
     
-    if (dateFrom) conditions.push(gte(auditLogs.createdAt, new Date(dateFrom)));
-    if (dateTo) conditions.push(lte(auditLogs.createdAt, new Date(dateTo)));
+    if (start) conditions.push(gte(auditLogs.createdAt, start));
+    if (endExclusive) conditions.push(lt(auditLogs.createdAt, endExclusive));
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -34,6 +78,8 @@ export async function GET(req: NextRequest) {
         entityType: auditLogs.entityType,
         entityId: auditLogs.entityId,
         actorRole: auditLogs.actorRole,
+        beforeData: auditLogs.beforeData,
+        afterData: auditLogs.afterData,
         reason: auditLogs.reason,
         source: auditLogs.source,
         createdAt: auditLogs.createdAt,
@@ -49,7 +95,13 @@ export async function GET(req: NextRequest) {
       .orderBy(desc(auditLogs.createdAt))
       .limit(limit);
 
-    return NextResponse.json({ logs });
+    const sanitizedLogs = logs.map((log) => ({
+      ...log,
+      beforeData: sanitizeAuditData(log.beforeData),
+      afterData: sanitizeAuditData(log.afterData),
+    }));
+
+    return NextResponse.json({ logs: sanitizedLogs });
   } catch (error) {
     console.error('Audit Logs API error:', error);
     return internalError();

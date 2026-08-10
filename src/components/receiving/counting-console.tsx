@@ -97,7 +97,14 @@ export function CountingConsole({
       ? 'text-amber-600'
       : 'text-red-600';
 
+  const isSensorOfflineOrStale =
+    deviceStatus !== 'ONLINE' ||
+    (session.deviceStatus?.lastHeartbeatAt
+      ? new Date().getTime() - new Date(session.deviceStatus.lastHeartbeatAt).getTime() > 30000
+      : true);
+
   const handleFinish = async () => {
+    if (submitting) return;
     setSubmitting(true);
     setErrorMsg(null);
     try {
@@ -128,6 +135,7 @@ export function CountingConsole({
   };
 
   const handleCancelSession = async () => {
+    if (submitting) return;
     if (!cancelReason.trim()) {
       setErrorMsg('Alasan pembatalan sesi wajib diisi.');
       return;
@@ -279,10 +287,24 @@ export function CountingConsole({
                 </p>
               </div>
 
+              {/* Stale / Offline Sensor Warning Warning Box near finish */}
+              {isSensorOfflineOrStale && (
+                <div className="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-xs flex items-start gap-2.5">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Peringatan Status Sensor ({deviceStatus})</p>
+                    <p className="text-[11px] mt-0.5 text-red-600 dark:text-red-300 leading-relaxed">
+                      Sensor di jalur ini berstatus <strong>{deviceStatus}</strong> atau koneksi heartbeat tidak merespons. Harap pastikan jaringan sensor tidak terputus sebelum menyelesaikan penghitungan.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Primary Finish Button */}
               <div className="pt-2">
                 <Button
                   onClick={() => setShowFinishDialog(true)}
+                  disabled={submitting}
                   className="w-full h-12 bg-rose-600 hover:bg-rose-500 text-white font-bold text-base gap-2 shadow-lg"
                 >
                   <Square className="h-5 w-5 fill-current" />
@@ -389,6 +411,15 @@ export function CountingConsole({
               <strong className="text-foreground">{receiving?.licensePlateSnapshot}</strong>)?
             </DialogDescription>
           </DialogHeader>
+
+          {isSensorOfflineOrStale && (
+            <div className="p-3 rounded bg-red-50 dark:bg-red-950/40 border border-red-200 text-xs text-red-700 dark:text-red-300 flex items-start gap-2 my-1">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
+              <div>
+                <strong>Peringatan Sensor ({deviceStatus}):</strong> Sensor jalur ini dalam kondisi offline/stale. Pastikan koneksi fisik sensor aman sebelum menyelesaikan.
+              </div>
+            </div>
+          )}
 
           <div className="p-3 bg-slate-100 dark:bg-slate-900 rounded-lg text-xs space-y-1.5 my-2 border">
             <div className="flex justify-between">

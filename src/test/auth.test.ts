@@ -131,7 +131,8 @@ describe('Auth, Permissions & Security Hardening (Batch 11)', () => {
 
       const token = await signSessionToken(payload);
       const [data, signature] = token.split('.');
-      const tamperedToken = `${data}.${signature.replace('a', 'b')}`;
+      const tamperedSig = signature[0] === 'a' ? `b${signature.slice(1)}` : `a${signature.slice(1)}`;
+      const tamperedToken = `${data}.${tamperedSig}`;
 
       const verified = await verifySessionToken(tamperedToken);
       expect(verified).toBeNull();
