@@ -340,6 +340,8 @@ Returns active session, receiving detail, actual count, difference, sensor statu
 
 Device APIs must authenticate with device credentials.
 
+Perilaku queue, boot lifecycle, retry, ACK, dan SOP pilot firmware dibekukan di [ESP32_PROTOCOL.md](./ESP32_PROTOCOL.md).
+
 Recommended header:
 
 ```text
@@ -373,6 +375,7 @@ Rules:
 
 - Validate known device.
 - Validate device belongs to line.
+- Accept 1–100 events per upload; firmware must also respect `batch_upload_max_events` from device config.
 - Insert events idempotently.
 - `event_id` duplicate must not increment actual.
 - `(device_id, boot_id, sequence)` duplicate must not increment actual, even if retry timestamp changes.
@@ -386,6 +389,7 @@ Rules:
 - Preserve raw payload.
 - Broadcast updates for active session counter and sensor activity.
 - Broadcast only after the database transaction commits.
+- `ACCEPTED` and `DUPLICATE` in a valid HTTP 200 response are successful ACKs for the matching event identity.
 
 Response:
 

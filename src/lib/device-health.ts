@@ -7,6 +7,7 @@ export type DeviceEffectiveStatus = DeviceStoredStatus;
 
 export const DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 10;
 export const DEFAULT_BATCH_UPLOAD_MAX_EVENTS = 100;
+export const MAX_BATCH_UPLOAD_EVENTS = 100;
 export const DEFAULT_HEARTBEAT_DEGRADED_THRESHOLD_SECONDS = 15;
 export const DEFAULT_HEARTBEAT_OFFLINE_THRESHOLD_SECONDS = 30;
 
@@ -32,6 +33,13 @@ const HEALTH_SETTING_KEYS = [
 function positiveInt(value: unknown, fallback: number) {
   const parsed = typeof value === 'number' ? value : Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+export function normalizeBatchUploadMaxEvents(value: unknown) {
+  return Math.min(
+    positiveInt(value, DEFAULT_BATCH_UPLOAD_MAX_EVENTS),
+    MAX_BATCH_UPLOAD_EVENTS
+  );
 }
 
 export async function getDeviceHealthSettings(database: typeof db = db): Promise<DeviceHealthSettings> {
@@ -61,9 +69,8 @@ export async function getDeviceHealthSettings(database: typeof db = db): Promise
       values.get('heartbeat_interval_seconds'),
       DEFAULT_HEARTBEAT_INTERVAL_SECONDS
     ),
-    batchUploadMaxEvents: positiveInt(
-      values.get('batch_upload_max_events'),
-      DEFAULT_BATCH_UPLOAD_MAX_EVENTS
+    batchUploadMaxEvents: normalizeBatchUploadMaxEvents(
+      values.get('batch_upload_max_events')
     ),
     degradedThresholdSeconds,
     offlineThresholdSeconds,

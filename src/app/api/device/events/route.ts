@@ -10,13 +10,13 @@ import {
   buildDeviceStatusPayload,
   deriveEffectiveDeviceStatus,
   getDeviceHealthSettings,
+  MAX_BATCH_UPLOAD_EVENTS,
   shouldPersistOnlineStatus,
 } from '@/lib/device-health';
 import { eq, and, or, sql, desc } from 'drizzle-orm';
 
 const ISO_8601_WITH_TIMEZONE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
 const MAX_SEQUENCE = 2147483647;
-const MAX_UPLOAD_EVENTS = 100;
 const BOOT_CHANGE_DIAGNOSTIC_WINDOW_MS = 5 * 60 * 1000;
 
 function parseDeviceTime(value: string): Date | null {
@@ -85,7 +85,7 @@ const deviceEventsSchema = z.object({
   events: z
     .array(eventItemSchema)
     .min(1, { message: 'events tidak boleh kosong' })
-    .max(MAX_UPLOAD_EVENTS, { message: 'Maksimal 100 event per upload' }),
+    .max(MAX_BATCH_UPLOAD_EVENTS, { message: 'Maksimal 100 event per upload' }),
 });
 
 export async function POST(req: NextRequest) {

@@ -2,6 +2,11 @@
 
 Sistem Penghitung Penerimaan Ayam Rumah Potong Ayam (RPA) berbasis Next.js App Router, Tailwind CSS, shadcn/ui, TypeScript, dan WebSocket.
 
+Dokumentasi integrasi perangkat dan pilot:
+
+- [Kontrak Firmware ESP32](docs/ESP32_PROTOCOL.md)
+- [Lembar Hasil Field Test ESP32](docs/ESP32_FIELD_TEST_RESULTS.md)
+
 ## Fitur Batch 1 (UI Foundation & Scaffold)
 
 - **Scaffold Next.js App Router** dengan TypeScript strict.

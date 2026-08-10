@@ -10,6 +10,8 @@ import {
   DEFAULT_HEARTBEAT_DEGRADED_THRESHOLD_SECONDS,
   DEFAULT_HEARTBEAT_INTERVAL_SECONDS,
   DEFAULT_HEARTBEAT_OFFLINE_THRESHOLD_SECONDS,
+  MAX_BATCH_UPLOAD_EVENTS,
+  normalizeBatchUploadMaxEvents,
 } from '@/lib/device-health';
 import { eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
@@ -33,7 +35,7 @@ const updateSettingsSchema = z.object({
     .number()
     .int('Ukuran batch harus berupa bilangan bulat.')
     .positive('Ukuran batch harus berupa angka positif (> 0).')
-    .max(1000, 'Ukuran batch maksimal 1000.'),
+    .max(MAX_BATCH_UPLOAD_EVENTS, `Ukuran batch maksimal ${MAX_BATCH_UPLOAD_EVENTS}.`),
 });
 
 const DEFAULT_SETTINGS = {
@@ -65,11 +67,11 @@ export async function GET(req: NextRequest) {
       pollingFallbackIntervalSeconds:
         (map.get('polling_fallback_interval_seconds') as number) ??
         DEFAULT_SETTINGS.pollingFallbackIntervalSeconds,
-      deviceBatchSize:
-        (map.get('batch_upload_max_events') as number) ??
-        (map.get('device_batch_upload_max_events') as number) ??
-        (map.get('device_batch_size') as number) ??
-        DEFAULT_SETTINGS.deviceBatchSize,
+      deviceBatchSize: normalizeBatchUploadMaxEvents(
+        map.get('batch_upload_max_events') ??
+          map.get('device_batch_upload_max_events') ??
+          map.get('device_batch_size')
+      ),
     };
 
     return NextResponse.json({ settings });
@@ -141,9 +143,11 @@ async function handleUpdateSettings(req: NextRequest) {
       pollingFallbackIntervalSeconds:
         beforeMap.get('polling_fallback_interval_seconds') ??
         DEFAULT_SETTINGS.pollingFallbackIntervalSeconds,
-      deviceBatchSize:
-        beforeMap.get('device_batch_upload_max_events') ??
-        DEFAULT_SETTINGS.deviceBatchSize,
+      deviceBatchSize: normalizeBatchUploadMaxEvents(
+        beforeMap.get('batch_upload_max_events') ??
+          beforeMap.get('device_batch_upload_max_events') ??
+          beforeMap.get('device_batch_size')
+      ),
     };
 
     const afterData = {

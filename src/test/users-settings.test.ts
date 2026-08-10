@@ -371,7 +371,7 @@ describe('Batch 18: Users and Settings Management', () => {
         heartbeatOfflineThresholdSeconds: 40,
         heartbeatDegradedThresholdSeconds: 20,
         pollingFallbackIntervalSeconds: 6,
-        deviceBatchSize: 150,
+        deviceBatchSize: 80,
       };
 
       const req = createRequest('/api/settings', 'PUT', adminToken, newSettings);
@@ -387,7 +387,7 @@ describe('Batch 18: Users and Settings Management', () => {
       const healthSettings = await getDeviceHealthSettings();
       expect(healthSettings.offlineThresholdSeconds).toBe(40);
       expect(healthSettings.degradedThresholdSeconds).toBe(20);
-      expect(healthSettings.batchUploadMaxEvents).toBe(150);
+      expect(healthSettings.batchUploadMaxEvents).toBe(80);
 
       // Verify audit log
       const audit = await db.query.auditLogs.findFirst({
@@ -396,6 +396,37 @@ describe('Batch 18: Users and Settings Management', () => {
       });
       expect(audit).toBeDefined();
       expect(audit!.action).toBe('UPDATE_SETTINGS');
+    });
+
+    it('Rejects a device batch size above the ingestion limit', async () => {
+      const req = createRequest('/api/settings', 'PUT', adminToken, {
+        siteName: 'Poultry RPA',
+        siteTimezone: 'Asia/Jakarta',
+        heartbeatOfflineThresholdSeconds: 30,
+        heartbeatDegradedThresholdSeconds: 15,
+        pollingFallbackIntervalSeconds: 5,
+        deviceBatchSize: 101,
+      });
+
+      const res = await putSettingsHandler(req);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error.code).toBe('VALIDATION_ERROR');
+      expect(json.error.details.deviceBatchSize).toContain('Ukuran batch maksimal 100.');
+    });
+
+    it('Caps a legacy oversized batch value in the Admin settings response', async () => {
+      await db
+        .update(schema.appSettings)
+        .set({ value: 150 })
+        .where(eq(schema.appSettings.key, 'batch_upload_max_events'));
+
+      const res = await getSettingsHandler(
+        createRequest('/api/settings', 'GET', adminToken)
+      );
+
+      expect(res.status).toBe(200);
+      expect((await res.json()).settings.deviceBatchSize).toBe(100);
     });
   });
 });

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { db } from '@/db';
 import { devices } from '@/db/schema';
 import { verifyDeviceCredential } from '@/lib/device-auth';
-import { validationError } from '@/lib/errors';
+import { internalError, validationError } from '@/lib/errors';
 import { wsBroadcaster } from '@/lib/ws';
 import {
   buildDeviceStatusPayload,
@@ -73,6 +73,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('POST /api/device/heartbeat error:', error);
-    return validationError('Terjadi kesalahan saat memproses heartbeat perangkat');
+    return internalError('Terjadi kesalahan saat memproses heartbeat perangkat');
   }
 }

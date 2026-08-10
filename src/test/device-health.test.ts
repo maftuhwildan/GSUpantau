@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { db } from '../db';
 import { runSeed } from '../db/seed';
@@ -8,6 +8,7 @@ import {
   deriveEffectiveDeviceStatus,
   getDeviceHealthSettings,
 } from '../lib/device-health';
+import * as deviceHealth from '../lib/device-health';
 import { wsBroadcaster, type WebSocketMessage } from '../lib/ws';
 import {
   scanAndBroadcastDeviceHealthChanges,
@@ -55,6 +56,10 @@ describe('Batch 15: Device Health and Offline Detection', () => {
     operatorCookie = `${SESSION_COOKIE_NAME}=${operatorToken}`;
     adminCookie = `${SESSION_COOKIE_NAME}=${adminToken}`;
   }, 30_000);
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   async function setSetting(key: string, value: number) {
     await db.update(appSettings).set({ value }).where(eq(appSettings.key, key));
@@ -142,6 +147,30 @@ describe('Batch 15: Device Health and Offline Detection', () => {
     expect(json.batch_upload_max_events).toBe(42);
   });
 
+  it('caps legacy batch settings at the ingestion limit returned to firmware', async () => {
+    await setSetting('batch_upload_max_events', 150);
+
+    await expect(getDeviceHealthSettings()).resolves.toMatchObject({
+      batchUploadMaxEvents: 100,
+    });
+
+    const res = await configHandler(deviceConfigRequest());
+    expect(res.status).toBe(200);
+    expect((await res.json()).batch_upload_max_events).toBe(100);
+  });
+
+  it('returns INTERNAL_ERROR when device config cannot read health settings', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(deviceHealth, 'getDeviceHealthSettings').mockRejectedValueOnce(
+      new Error('settings unavailable')
+    );
+
+    const res = await configHandler(deviceConfigRequest());
+
+    expect(res.status).toBe(500);
+    expect((await res.json()).error.code).toBe('INTERNAL_ERROR');
+  });
+
   it('returns UNREGISTERED before the first heartbeat when device data is read', async () => {
     await db
       .update(devices)
@@ -200,6 +229,18 @@ describe('Batch 15: Device Health and Offline Detection', () => {
 
     const [afterEvent] = await db.select().from(devices).where(eq(devices.id, device1.id));
     expect(afterEvent.status).toBe('MAINTENANCE');
+  });
+
+  it('returns INTERNAL_ERROR when heartbeat cannot read health settings', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(deviceHealth, 'getDeviceHealthSettings').mockRejectedValueOnce(
+      new Error('settings unavailable')
+    );
+
+    const res = await heartbeatHandler(heartbeatRequest());
+
+    expect(res.status).toBe(500);
+    expect((await res.json()).error.code).toBe('INTERNAL_ERROR');
   });
 
   it('shows stale device status and last heartbeat separately on dashboards', async () => {

@@ -243,11 +243,11 @@ export default function AdminSettingsPage() {
                     onChange={(e) => setDeviceBatchSize(Number(e.target.value))}
                     required
                     min={1}
-                    max={1000}
+                    max={100}
                     className="text-xs font-mono max-w-xs"
                   />
                   <p className="text-[10px] text-muted-foreground">
-                    Jumlah maksimum event per unggahan batch dari perangkat ESP32 (Maksimal 1000)
+                    Jumlah maksimum event per unggahan batch dari perangkat ESP32 (Maksimal 100)
                   </p>
                 </div>
               </CardContent>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyDeviceCredential } from '@/lib/device-auth';
 import { getDeviceHealthSettings } from '@/lib/device-health';
-import { validationError } from '@/lib/errors';
+import { internalError, validationError } from '@/lib/errors';
 
 export async function GET(req: NextRequest) {
   try {
@@ -28,6 +28,6 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error('GET /api/device/config error:', error);
-    return validationError('Terjadi kesalahan saat mengambil konfigurasi perangkat');
+    return internalError('Terjadi kesalahan saat mengambil konfigurasi perangkat');
   }
 }
