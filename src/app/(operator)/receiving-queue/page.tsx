@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { QueueTable, ReceivingData } from '@/components/receiving/queue-table';
 import { StartCountingDialog } from '@/components/receiving/start-counting-dialog';
+import { useWebSocket } from '@/components/layout/ws-provider';
 
 export default function OperatorReceivingQueuePage() {
   const [receivings, setReceivings] = useState<ReceivingData[]>([]);
@@ -15,6 +16,7 @@ export default function OperatorReceivingQueuePage() {
 
   const [startDialogOpen, setStartDialogOpen] = useState(false);
   const [receivingToStart, setReceivingToStart] = useState<ReceivingData | null>(null);
+  const { lastMessage } = useWebSocket();
 
   const fetchQueue = useCallback(async () => {
     setLoading(true);
@@ -46,6 +48,22 @@ export default function OperatorReceivingQueuePage() {
   useEffect(() => {
     fetchQueue();
   }, [fetchQueue]);
+
+  useEffect(() => {
+    if (!lastMessage) return;
+
+    const type = lastMessage.type;
+    if (
+      type === 'session.started' ||
+      type === 'session.finished' ||
+      type === 'session.cancelled' ||
+      type === 'receiving.queue_updated' ||
+      type === 'realtime.reconnected' ||
+      type === 'realtime.poll'
+    ) {
+      fetchQueue();
+    }
+  }, [lastMessage, fetchQueue]);
 
   const handleStartPrompt = (receiving: ReceivingData) => {
     setReceivingToStart(receiving);

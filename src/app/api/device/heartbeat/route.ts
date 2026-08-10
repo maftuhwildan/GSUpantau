@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     wsBroadcaster.broadcast('device.status_updated', {
       device_id: device!.id,
       device_code: device!.deviceCode,
+      line_id: device!.lineId,
       status: 'ONLINE',
       last_heartbeat_at: now.toISOString(),
       wifi_rssi: wifi_rssi ?? device!.wifiRssi,

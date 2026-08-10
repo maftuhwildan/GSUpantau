@@ -58,7 +58,9 @@ export default function AdminDashboardPage() {
         type === 'receiving.queue_updated' ||
         type === 'session.counter_updated' ||
         type === 'device.status_updated' ||
-        type === 'audit.created'
+        type === 'audit.created' ||
+        type === 'realtime.reconnected' ||
+        type === 'realtime.poll'
       ) {
         fetchDashboard();
       }

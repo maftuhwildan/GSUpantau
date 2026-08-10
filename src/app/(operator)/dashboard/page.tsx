@@ -63,7 +63,9 @@ export default function OperatorDashboardPage() {
         type === 'session.finished' || 
         type === 'session.cancelled' || 
         type === 'receiving.queue_updated' ||
-        type === 'session.counter_updated'
+        type === 'session.counter_updated' ||
+        type === 'realtime.reconnected' ||
+        type === 'realtime.poll'
       ) {
         fetchDashboard();
       }

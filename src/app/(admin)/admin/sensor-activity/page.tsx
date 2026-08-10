@@ -38,7 +38,12 @@ export default function AdminSensorActivityPage() {
   useEffect(() => {
     if (lastMessage) {
       const type = (lastMessage as any).type;
-      if (type === 'sensor.event_received' || type === 'device.status_updated') {
+      if (
+        type === 'sensor.event_received' ||
+        type === 'device.status_updated' ||
+        type === 'realtime.reconnected' ||
+        type === 'realtime.poll'
+      ) {
         fetchEvents();
       }
     }

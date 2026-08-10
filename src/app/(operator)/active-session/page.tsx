@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Radio, AlertCircle, PlayCircle, Layers } from 'lucide-react';
+import { useWebSocket } from '@/components/layout/ws-provider';
 
 export default function OperatorActiveSessionPage() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function OperatorActiveSessionPage() {
   const [sessionDetail, setSessionDetail] = useState<ActiveSessionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { lastMessage } = useWebSocket();
 
   // Fetch available lines
   useEffect(() => {
@@ -69,6 +71,22 @@ export default function OperatorActiveSessionPage() {
 
     return () => clearInterval(timer);
   }, [fetchActiveSession]);
+
+  useEffect(() => {
+    if (!lastMessage) return;
+
+    const type = lastMessage.type;
+    if (
+      type === 'session.started' ||
+      type === 'session.counter_updated' ||
+      type === 'session.finished' ||
+      type === 'session.cancelled' ||
+      type === 'realtime.reconnected' ||
+      type === 'realtime.poll'
+    ) {
+      fetchActiveSession();
+    }
+  }, [lastMessage, fetchActiveSession]);
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-10">

@@ -5,6 +5,7 @@ import { receivings, lines, trucks, drivers, suppliers, users, receivingSessions
 import { requirePermission, checkOperatorLineAccess, isOperatorOnly } from '@/lib/auth';
 import { validationError, internalError, forbiddenError } from '@/lib/errors';
 import { createAuditLog } from '@/lib/audit';
+import { wsBroadcaster } from '@/lib/ws';
 import { eq, and, gte, lte, or, ilike, asc, desc, inArray, sql } from 'drizzle-orm';
 
 const createReceivingSchema = z.object({
@@ -205,7 +206,7 @@ export async function POST(req: NextRequest) {
     const randomSeq = Math.floor(1000 + Math.random() * 9000);
     const receivingNumber = `REC-${dateCompact}-${randomSeq}`;
 
-    const newReceiving = await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const [inserted] = await tx
         .insert(receivings)
         .values({
@@ -229,7 +230,7 @@ export async function POST(req: NextRequest) {
         })
         .returning();
 
-      await createAuditLog(
+      const auditLog = await createAuditLog(
         {
           actorId: user!.id,
           actorRole: user!.roles[0],
@@ -242,10 +243,18 @@ export async function POST(req: NextRequest) {
         tx
       );
 
-      return inserted;
+      return { newReceiving: inserted, auditLog };
     });
 
-    return NextResponse.json({ receiving: newReceiving }, { status: 201 });
+    wsBroadcaster.broadcast('audit.created', {
+      audit_log_id: result.auditLog.id,
+      action: result.auditLog.action,
+      entity_type: result.auditLog.entityType,
+      entity_id: result.auditLog.entityId,
+      line_id: result.newReceiving.lineId,
+    });
+
+    return NextResponse.json({ receiving: result.newReceiving }, { status: 201 });
   } catch (error) {
     console.error('POST /api/receivings error:', error);
     return internalError();

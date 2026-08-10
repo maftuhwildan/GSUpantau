@@ -127,6 +127,41 @@ SITE_TIMEZONE=Asia/Jakarta
 NODE_ENV=production
 ```
 
+## Reverse Proxy WebSocket Upgrade
+
+Batch 14 uses a custom Node server that serves Next.js and the authenticated
+WebSocket endpoint at `/ws`. Any reverse proxy in front of the app must pass
+HTTP Upgrade requests to the app container.
+
+Nginx example:
+
+```nginx
+location /ws {
+  proxy_pass http://app:3000;
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection "upgrade";
+  proxy_set_header Host $host;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_read_timeout 75s;
+}
+```
+
+Caddy example:
+
+```caddyfile
+receiving.example.com {
+  reverse_proxy app:3000
+}
+```
+
+Do not terminate or strip the `Cookie` header for `/ws`; the server authenticates
+the handshake with the same secure HttpOnly session cookie used by protected API
+routes. The WebSocket stream is only a notification channel, so dashboards must
+continue to refetch authoritative state from HTTP APIs after reconnect and fall
+back to polling when the socket is unavailable.
+
 When the app runs inside the same VPS Compose network, use `postgres` as the hostname. When a developer laptop connects to the development database, use the VPS Tailscale hostname or IP instead.
 
 ## Production Notes

@@ -14,14 +14,74 @@ export interface WebSocketMessage {
 
 type EventListener = (msg: WebSocketMessage) => void;
 
+export interface RealtimeClient {
+  id: string;
+  userId: string;
+  roles: string[];
+  assignedLineId?: string | null;
+  send: (msg: WebSocketMessage) => void;
+}
+
+function payloadLineIds(payload: Record<string, unknown>): string[] {
+  const lineIds = new Set<string>();
+  const directLineId = payload.line_id;
+  const directLineIds = payload.line_ids;
+
+  if (typeof directLineId === 'string' && directLineId.length > 0) {
+    lineIds.add(directLineId);
+  }
+
+  if (Array.isArray(directLineIds)) {
+    directLineIds.forEach((lineId) => {
+      if (typeof lineId === 'string' && lineId.length > 0) {
+        lineIds.add(lineId);
+      }
+    });
+  }
+
+  return Array.from(lineIds);
+}
+
+export function canDeliverRealtimeMessage(client: Pick<RealtimeClient, 'roles' | 'assignedLineId'>, msg: WebSocketMessage) {
+  if (client.roles.includes('ADMIN')) {
+    return true;
+  }
+
+  if (!client.roles.includes('OPERATOR') || !client.assignedLineId) {
+    return false;
+  }
+
+  const lineIds = payloadLineIds(msg.payload);
+  return lineIds.length > 0 && lineIds.includes(client.assignedLineId);
+}
+
 class WebSocketBroadcaster {
   private listeners: Set<EventListener> = new Set();
+  private clients: Map<string, RealtimeClient> = new Map();
 
   public subscribe(listener: EventListener) {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
     };
+  }
+
+  public registerClient(client: RealtimeClient) {
+    this.clients.set(client.id, client);
+
+    return () => {
+      this.clients.delete(client.id);
+    };
+  }
+
+  public getClientCount() {
+    return this.clients.size;
+  }
+
+  public clearClientsForTest() {
+    if (process.env.NODE_ENV === 'test') {
+      this.clients.clear();
+    }
   }
 
   public broadcast(type: WebSocketMessage['type'], payload: Record<string, unknown>) {
@@ -36,6 +96,17 @@ class WebSocketBroadcaster {
         listener(msg);
       } catch (err) {
         console.error('Error in websocket listener:', err);
+      }
+    });
+
+    this.clients.forEach((client, clientId) => {
+      if (!canDeliverRealtimeMessage(client, msg)) return;
+
+      try {
+        client.send(msg);
+      } catch (err) {
+        this.clients.delete(clientId);
+        console.error('Error sending websocket message:', err);
       }
     });
   }

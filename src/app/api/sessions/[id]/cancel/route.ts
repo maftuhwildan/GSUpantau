@@ -56,7 +56,7 @@ export async function POST(
       );
     }
 
-    const updatedSession = await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const lockedLine = await lockCountingLine(tx, session.lineId);
       if (!lockedLine) {
         throw new AppError('NOT_FOUND', 'Jalur (Line) sesi tidak ditemukan', 404);
@@ -109,7 +109,7 @@ export async function POST(
         );
       }
 
-      await recordAuditLog(
+      const auditLog = await recordAuditLog(
         {
           actorId: user!.id,
           actorRole: user!.roles[0],
@@ -128,20 +128,32 @@ export async function POST(
         tx
       );
 
-      return cancSession;
+      return { updatedSession: cancSession, auditLog };
     });
 
     wsBroadcaster.broadcast('session.cancelled', {
       session_id: session.id,
       receiving_id: session.receivingId,
+      line_id: session.lineId,
       reason,
+    });
+    wsBroadcaster.broadcast('receiving.queue_updated', {
+      line_id: session.lineId,
+      reason: 'SESSION_CANCEL',
+    });
+    wsBroadcaster.broadcast('audit.created', {
+      audit_log_id: result.auditLog.id,
+      action: result.auditLog.action,
+      entity_type: result.auditLog.entityType,
+      entity_id: result.auditLog.entityId,
+      line_id: session.lineId,
     });
 
     return NextResponse.json({
       session: {
-        id: updatedSession.id,
-        status: updatedSession.status,
-        cancellation_reason: updatedSession.cancellationReason,
+        id: result.updatedSession.id,
+        status: result.updatedSession.status,
+        cancellation_reason: result.updatedSession.cancellationReason,
       },
     });
   } catch (error) {

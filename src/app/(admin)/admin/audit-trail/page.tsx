@@ -39,7 +39,11 @@ export default function AdminAuditTrailPage() {
   useEffect(() => {
     if (lastMessage) {
       const type = (lastMessage as any).type;
-      if (type === 'audit.created') {
+      if (
+        type === 'audit.created' ||
+        type === 'realtime.reconnected' ||
+        type === 'realtime.poll'
+      ) {
         fetchLogs();
       }
     }

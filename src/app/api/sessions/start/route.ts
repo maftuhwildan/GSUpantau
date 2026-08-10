@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     // The line row is the serialization boundary shared by session transitions
     // and sensor-event assignment.
-    const newSession = await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const lockedLine = await lockCountingLine(tx, targetLineId);
       if (!lockedLine) {
         throw new AppError('NOT_FOUND', 'Jalur (Line) penghitungan tidak ditemukan', 404);
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
         })
         .returning();
 
-      await recordAuditLog(
+      const auditLog = await recordAuditLog(
         {
           actorId: user!.id,
           actorRole: user!.roles[0],
@@ -176,23 +176,34 @@ export async function POST(req: NextRequest) {
         tx
       );
 
-      return session;
+      return { session, auditLog };
     });
 
     wsBroadcaster.broadcast('session.started', {
-      session_id: newSession.id,
-      receiving_id: newSession.receivingId,
+      session_id: result.session.id,
+      receiving_id: result.session.receivingId,
+      line_id: targetLineId,
+    });
+    wsBroadcaster.broadcast('receiving.queue_updated', {
+      line_id: targetLineId,
+      reason: 'SESSION_START',
+    });
+    wsBroadcaster.broadcast('audit.created', {
+      audit_log_id: result.auditLog.id,
+      action: result.auditLog.action,
+      entity_type: result.auditLog.entityType,
+      entity_id: result.auditLog.entityId,
       line_id: targetLineId,
     });
 
     return NextResponse.json(
       {
         session: {
-          id: newSession.id,
-          receiving_id: newSession.receivingId,
-          line_id: newSession.lineId,
-          status: newSession.status,
-          started_at: newSession.startedAt,
+          id: result.session.id,
+          receiving_id: result.session.receivingId,
+          line_id: result.session.lineId,
+          status: result.session.status,
+          started_at: result.session.startedAt,
         },
       },
       { status: 201 }

@@ -16,6 +16,7 @@ import {
 import { requirePermission, checkOperatorLineAccess, isOperatorOnly } from '@/lib/auth';
 import { validationError, notFoundError, internalError, createErrorResponse, forbiddenError, AppError, buildErrorResponse } from '@/lib/errors';
 import { createAuditLog } from '@/lib/audit';
+import { wsBroadcaster } from '@/lib/ws';
 import { eq, and, sql, desc, inArray } from 'drizzle-orm';
 
 const updateReceivingSchema = z.object({
@@ -187,7 +188,7 @@ export async function PATCH(
 
     const data = parseResult.data;
 
-    const updatedReceiving = await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const [existing] = await tx
         .select()
         .from(receivings)
@@ -252,7 +253,7 @@ export async function PATCH(
       const auditAction =
         existing.status === 'WAITING' && isManifestChanging ? 'MANIFEST_REVISION' : 'RECEIVING_UPDATE';
 
-      await createAuditLog(
+      const auditLog = await createAuditLog(
         {
           actorId: user!.id,
           actorRole: user!.roles[0],
@@ -267,10 +268,25 @@ export async function PATCH(
         tx
       );
 
-      return updated;
+      return { updatedReceiving: updated, auditLog, auditAction };
     });
 
-    return NextResponse.json({ receiving: updatedReceiving });
+    wsBroadcaster.broadcast('audit.created', {
+      audit_log_id: result.auditLog.id,
+      action: result.auditLog.action,
+      entity_type: result.auditLog.entityType,
+      entity_id: result.auditLog.entityId,
+      line_id: result.updatedReceiving.lineId,
+    });
+
+    if (result.updatedReceiving.status === 'WAITING') {
+      wsBroadcaster.broadcast('receiving.queue_updated', {
+        line_id: result.updatedReceiving.lineId,
+        reason: result.auditAction,
+      });
+    }
+
+    return NextResponse.json({ receiving: result.updatedReceiving });
   } catch (error) {
     if (error instanceof AppError) {
       return buildErrorResponse(error);

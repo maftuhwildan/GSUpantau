@@ -4,6 +4,7 @@ import { receivings } from '@/db/schema';
 import { requirePermission } from '@/lib/auth';
 import { validationError, notFoundError, internalError, createErrorResponse, AppError, buildErrorResponse } from '@/lib/errors';
 import { createAuditLog } from '@/lib/audit';
+import { wsBroadcaster } from '@/lib/ws';
 import { eq } from 'drizzle-orm';
 
 export async function POST(
@@ -16,7 +17,7 @@ export async function POST(
   const { id } = await params;
 
   try {
-    const publishedReceiving = await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const [existing] = await tx
         .select()
         .from(receivings)
@@ -54,7 +55,7 @@ export async function POST(
         .where(eq(receivings.id, id))
         .returning();
 
-      await createAuditLog(
+      const auditLog = await createAuditLog(
         {
           actorId: user!.id,
           actorRole: user!.roles[0],
@@ -68,10 +69,22 @@ export async function POST(
         tx
       );
 
-      return published;
+      return { publishedReceiving: published, auditLog };
     });
 
-    return NextResponse.json({ receiving: publishedReceiving });
+    wsBroadcaster.broadcast('receiving.queue_updated', {
+      line_id: result.publishedReceiving.lineId,
+      reason: 'RECEIVING_PUBLISH',
+    });
+    wsBroadcaster.broadcast('audit.created', {
+      audit_log_id: result.auditLog.id,
+      action: result.auditLog.action,
+      entity_type: result.auditLog.entityType,
+      entity_id: result.auditLog.entityId,
+      line_id: result.publishedReceiving.lineId,
+    });
+
+    return NextResponse.json({ receiving: result.publishedReceiving });
   } catch (error) {
     if (error instanceof AppError) {
       return buildErrorResponse(error);

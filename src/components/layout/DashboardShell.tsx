@@ -1,6 +1,7 @@
 import React from "react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { WebSocketProvider } from "./ws-provider";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -18,9 +19,11 @@ export function DashboardShell({
       <Sidebar role={role} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header role={role} userEmail={userEmail} />
-        <main className="flex-1 overflow-y-auto p-6 space-y-6">
-          {children}
-        </main>
+        <WebSocketProvider>
+          <main className="flex-1 overflow-y-auto p-6 space-y-6">
+            {children}
+          </main>
+        </WebSocketProvider>
       </div>
     </div>
   );

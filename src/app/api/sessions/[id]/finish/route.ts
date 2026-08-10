@@ -57,7 +57,7 @@ export async function POST(
       );
     }
 
-    const { actualCount, differenceCount, differencePercent, updatedSession } = await db.transaction(
+    const { actualCount, differenceCount, differencePercent, updatedSession, auditLog } = await db.transaction(
       async (tx) => {
         const lockedLine = await lockCountingLine(tx, session.lineId);
         if (!lockedLine) {
@@ -158,7 +158,7 @@ export async function POST(
         });
 
         // 5. Record audit log
-        await recordAuditLog(
+        const auditLog = await recordAuditLog(
           {
             actorId: user!.id,
             actorRole: user!.roles[0],
@@ -185,6 +185,7 @@ export async function POST(
           differenceCount: diffCount,
           differencePercent: diffPercent,
           updatedSession: completedSession,
+          auditLog,
         };
       }
     );
@@ -192,9 +193,21 @@ export async function POST(
     wsBroadcaster.broadcast('session.finished', {
       session_id: session.id,
       receiving_id: session.receivingId,
+      line_id: session.lineId,
       actual_count: actualCount,
       difference_count: differenceCount,
       difference_percent: differencePercent,
+    });
+    wsBroadcaster.broadcast('receiving.queue_updated', {
+      line_id: session.lineId,
+      reason: 'SESSION_FINISH',
+    });
+    wsBroadcaster.broadcast('audit.created', {
+      audit_log_id: auditLog.id,
+      action: auditLog.action,
+      entity_type: auditLog.entityType,
+      entity_id: auditLog.entityId,
+      line_id: session.lineId,
     });
 
     return NextResponse.json({
