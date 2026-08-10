@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { runSeed } from '../db/seed';
 import { db } from '../db';
@@ -6,6 +6,7 @@ import { users, receivings, receivingSessions, lines, devices, sensorEvents, aud
 import { signSessionToken, SESSION_COOKIE_NAME } from '../lib/auth';
 import { and, eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
+import * as auditModule from '../lib/audit';
 import { POST as startSessionHandler } from '../app/api/sessions/start/route';
 import { POST as finishSessionHandler } from '../app/api/sessions/[id]/finish/route';
 import { POST as cancelSessionHandler } from '../app/api/sessions/[id]/cancel/route';
@@ -636,6 +637,77 @@ describe('Session Start & Finish (Batch 5)', () => {
         .from(receivingSessions)
         .where(eq(receivingSessions.id, session.id));
       expect(savedSession.status).toBe('COUNTING');
+    });
+
+    it('does not commit session start when recordAuditLog throws an error', async () => {
+      const line = await createLine();
+      const receiving = await createReceiving('WAITING', line.id);
+      const spy = vi.spyOn(auditModule, 'recordAuditLog').mockImplementationOnce(() => {
+        throw new Error('Database Audit Error');
+      });
+
+      const req = new NextRequest('http://localhost:3000/api/sessions/start', {
+        method: 'POST',
+        headers: sessionHeaders(adminToken),
+        body: JSON.stringify({ receiving_id: receiving.id, line_id: line.id }),
+      });
+
+      const res = await startSessionHandler(req);
+      expect(res.status).toBe(500);
+
+      // Verify no session was created and receiving remains WAITING
+      const activeSessions = await db
+        .select()
+        .from(receivingSessions)
+        .where(eq(receivingSessions.receivingId, receiving.id));
+      expect(activeSessions).toHaveLength(0);
+
+      const [recheckedRec] = await db
+        .select()
+        .from(receivings)
+        .where(eq(receivings.id, receiving.id));
+      expect(recheckedRec.status).toBe('WAITING');
+
+      spy.mockRestore();
+    });
+
+    it('does not commit session finish when recordAuditLog throws an error', async () => {
+      const line = await createLine();
+      const receiving = await createReceiving('COUNTING', line.id);
+      const [session] = await db.insert(receivingSessions).values({
+        receivingId: receiving.id,
+        lineId: line.id,
+        status: 'COUNTING',
+        startedBy: adminUserId,
+      }).returning();
+
+      const spy = vi.spyOn(auditModule, 'recordAuditLog').mockImplementationOnce(() => {
+        throw new Error('Database Audit Error');
+      });
+
+      const req = new NextRequest(`http://localhost:3000/api/sessions/${session.id}/finish`, {
+        method: 'POST',
+        headers: sessionHeaders(adminToken),
+        body: JSON.stringify({ confirmation: true }),
+      });
+
+      const res = await finishSessionHandler(req, { params: Promise.resolve({ id: session.id }) });
+      expect(res.status).toBe(500);
+
+      // Verify session remains COUNTING and receiving remains COUNTING
+      const [savedSession] = await db
+        .select()
+        .from(receivingSessions)
+        .where(eq(receivingSessions.id, session.id));
+      expect(savedSession.status).toBe('COUNTING');
+
+      const [savedRec] = await db
+        .select()
+        .from(receivings)
+        .where(eq(receivings.id, receiving.id));
+      expect(savedRec.status).toBe('COUNTING');
+
+      spy.mockRestore();
     });
   });
 });

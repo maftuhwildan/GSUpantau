@@ -12,6 +12,8 @@ import {
 } from '@/lib/auth';
 import { validationError, createErrorResponse, internalError } from '@/lib/errors';
 
+import { createAuditLog } from '@/lib/audit';
+
 const loginSchema = z.object({
   email: z.string().email({ message: 'Format email tidak valid.' }),
   password: z.string().min(1, { message: 'Kata sandi wajib diisi.' }),
@@ -66,11 +68,26 @@ export async function POST(req: NextRequest) {
     const roles = userRoleRecords.map((r) => r.roleCode);
     const permissions = getPermissionsForRoles(roles);
 
-    // Update lastLoginAt
-    await db
-      .update(schema.users)
-      .set({ lastLoginAt: new Date(), updatedAt: new Date() })
-      .where(eq(schema.users.id, user.id));
+    // Update lastLoginAt and write audit log transactionally
+    await db.transaction(async (tx) => {
+      await tx
+        .update(schema.users)
+        .set({ lastLoginAt: new Date(), updatedAt: new Date() })
+        .where(eq(schema.users.id, user.id));
+
+      await createAuditLog(
+        {
+          actorId: user.id,
+          actorRole: roles[0] || 'UNKNOWN',
+          action: 'LOGIN',
+          entityType: 'USER',
+          entityId: user.id,
+          afterData: { email: user.email, roles },
+          source: 'WEB',
+        },
+        tx
+      );
+    });
 
     // Sign token & set cookie
     const expiresAt = Date.now() + SESSION_MAX_AGE * 1000;
@@ -80,17 +97,6 @@ export async function POST(req: NextRequest) {
       name: user.name,
       roles,
       expiresAt,
-    });
-
-    // Write audit log
-    await db.insert(schema.auditLogs).values({
-      actorId: user.id,
-      actorRole: roles[0] || 'UNKNOWN',
-      action: 'LOGIN',
-      entityType: 'USER',
-      entityId: user.id,
-      afterData: { email: user.email, roles },
-      source: 'WEB',
     });
 
     const response = NextResponse.json({

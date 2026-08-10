@@ -14,7 +14,7 @@ import {
   auditLogs,
 } from '@/db/schema';
 import { requirePermission, checkOperatorLineAccess, isOperatorOnly } from '@/lib/auth';
-import { validationError, notFoundError, internalError, createErrorResponse, forbiddenError } from '@/lib/errors';
+import { validationError, notFoundError, internalError, createErrorResponse, forbiddenError, AppError, buildErrorResponse } from '@/lib/errors';
 import { createAuditLog } from '@/lib/audit';
 import { eq, and, sql, desc, inArray } from 'drizzle-orm';
 
@@ -177,23 +177,6 @@ export async function PATCH(
   const { id } = await params;
 
   try {
-    const [existing] = await db
-      .select()
-      .from(receivings)
-      .where(eq(receivings.id, id));
-
-    if (!existing) {
-      return notFoundError('Surat Jalan (Receiving) tidak ditemukan.');
-    }
-
-    if (existing.status === 'COUNTING' || existing.status === 'COMPLETED' || existing.status === 'CANCELLED') {
-      return createErrorResponse(
-        'INVALID_STATUS',
-        `Data Surat Jalan dengan status ${existing.status} tidak dapat diubah.`,
-        400
-      );
-    }
-
     const body = await req.json();
     const parseResult = updateReceivingSchema.safeParse(body);
 
@@ -204,68 +187,94 @@ export async function PATCH(
 
     const data = parseResult.data;
 
-    // Check manifest revision rule for WAITING
-    const isManifestChanging =
-      data.manifest_count !== undefined && data.manifest_count !== existing.manifestCount;
+    const updatedReceiving = await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(receivings)
+        .where(eq(receivings.id, id))
+        .for('update');
 
-    if (existing.status === 'WAITING' && isManifestChanging) {
-      if (!data.reason || data.reason.trim() === '') {
-        return validationError('Alasan revisi manifest wajib diisi untuk Surat Jalan yang sudah diterbitkan.');
+      if (!existing) {
+        throw new AppError('NOT_FOUND', 'Surat Jalan (Receiving) tidak ditemukan.', 404);
       }
 
-      // Record manifest revision
-      await db.insert(manifestRevisions).values({
-        receivingId: existing.id,
-        oldManifestCount: existing.manifestCount,
-        newManifestCount: data.manifest_count!,
-        reason: data.reason.trim(),
-        changedBy: user!.id,
-      });
-    }
+      if (existing.status === 'COUNTING' || existing.status === 'COMPLETED' || existing.status === 'CANCELLED') {
+        throw new AppError(
+          'INVALID_STATUS',
+          `Data Surat Jalan dengan status ${existing.status} tidak dapat diubah.`,
+          400
+        );
+      }
 
-    // Build update object
-    const updateValues: Partial<typeof receivings.$inferInsert> = {
-      updatedAt: new Date(),
-    };
+      const isManifestChanging =
+        data.manifest_count !== undefined && data.manifest_count !== existing.manifestCount;
 
-    if (data.receiving_date !== undefined) updateValues.receivingDate = data.receiving_date;
-    if (data.delivery_note_number !== undefined) updateValues.deliveryNoteNumber = data.delivery_note_number;
-    if (data.document_truck_sequence !== undefined) updateValues.documentTruckSequence = data.document_truck_sequence;
-    if (data.queue_position !== undefined) updateValues.queuePosition = data.queue_position;
-    if (data.truck_id !== undefined) updateValues.truckId = data.truck_id;
-    if (data.license_plate_snapshot !== undefined) updateValues.licensePlateSnapshot = data.license_plate_snapshot;
-    if (data.driver_id !== undefined) updateValues.driverId = data.driver_id;
-    if (data.driver_name_snapshot !== undefined) updateValues.driverNameSnapshot = data.driver_name_snapshot;
-    if (data.supplier_id !== undefined) updateValues.supplierId = data.supplier_id;
-    if (data.supplier_name_snapshot !== undefined) updateValues.supplierNameSnapshot = data.supplier_name_snapshot;
-    if (data.manifest_count !== undefined) updateValues.manifestCount = data.manifest_count;
-    if (data.line_id !== undefined) updateValues.lineId = data.line_id;
-    if (data.notes !== undefined) updateValues.notes = data.notes;
+      if (existing.status === 'WAITING' && isManifestChanging) {
+        if (!data.reason || data.reason.trim() === '') {
+          throw new AppError('VALIDATION_ERROR', 'Alasan revisi manifest wajib diisi untuk Surat Jalan yang sudah diterbitkan.', 400);
+        }
+      }
 
-    const [updatedReceiving] = await db
-      .update(receivings)
-      .set(updateValues)
-      .where(eq(receivings.id, id))
-      .returning();
+      const updateValues: Partial<typeof receivings.$inferInsert> = {
+        updatedAt: new Date(),
+      };
 
-    // Record audit log
-    const auditAction =
-      existing.status === 'WAITING' && isManifestChanging ? 'MANIFEST_REVISION' : 'RECEIVING_UPDATE';
+      if (data.receiving_date !== undefined) updateValues.receivingDate = data.receiving_date;
+      if (data.delivery_note_number !== undefined) updateValues.deliveryNoteNumber = data.delivery_note_number;
+      if (data.document_truck_sequence !== undefined) updateValues.documentTruckSequence = data.document_truck_sequence;
+      if (data.queue_position !== undefined) updateValues.queuePosition = data.queue_position;
+      if (data.truck_id !== undefined) updateValues.truckId = data.truck_id;
+      if (data.license_plate_snapshot !== undefined) updateValues.licensePlateSnapshot = data.license_plate_snapshot;
+      if (data.driver_id !== undefined) updateValues.driverId = data.driver_id;
+      if (data.driver_name_snapshot !== undefined) updateValues.driverNameSnapshot = data.driver_name_snapshot;
+      if (data.supplier_id !== undefined) updateValues.supplierId = data.supplier_id;
+      if (data.supplier_name_snapshot !== undefined) updateValues.supplierNameSnapshot = data.supplier_name_snapshot;
+      if (data.manifest_count !== undefined) updateValues.manifestCount = data.manifest_count;
+      if (data.line_id !== undefined) updateValues.lineId = data.line_id;
+      if (data.notes !== undefined) updateValues.notes = data.notes;
 
-    await createAuditLog({
-      actorId: user!.id,
-      actorRole: user!.roles[0],
-      action: auditAction,
-      entityType: 'receiving',
-      entityId: id,
-      beforeData: existing,
-      afterData: updatedReceiving,
-      reason: data.reason || null,
-      source: 'WEB',
+      if (existing.status === 'WAITING' && isManifestChanging) {
+        await tx.insert(manifestRevisions).values({
+          receivingId: existing.id,
+          oldManifestCount: existing.manifestCount,
+          newManifestCount: data.manifest_count!,
+          reason: data.reason!.trim(),
+          changedBy: user!.id,
+        });
+      }
+
+      const [updated] = await tx
+        .update(receivings)
+        .set(updateValues)
+        .where(eq(receivings.id, id))
+        .returning();
+
+      const auditAction =
+        existing.status === 'WAITING' && isManifestChanging ? 'MANIFEST_REVISION' : 'RECEIVING_UPDATE';
+
+      await createAuditLog(
+        {
+          actorId: user!.id,
+          actorRole: user!.roles[0],
+          action: auditAction,
+          entityType: 'receiving',
+          entityId: id,
+          beforeData: existing,
+          afterData: updated,
+          reason: data.reason || null,
+          source: 'WEB',
+        },
+        tx
+      );
+
+      return updated;
     });
 
     return NextResponse.json({ receiving: updatedReceiving });
   } catch (error) {
+    if (error instanceof AppError) {
+      return buildErrorResponse(error);
+    }
     console.error('PATCH /api/receivings/:id error:', error);
     return internalError();
   }

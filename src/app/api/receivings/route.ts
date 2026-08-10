@@ -205,37 +205,44 @@ export async function POST(req: NextRequest) {
     const randomSeq = Math.floor(1000 + Math.random() * 9000);
     const receivingNumber = `REC-${dateCompact}-${randomSeq}`;
 
-    const [newReceiving] = await db
-      .insert(receivings)
-      .values({
-        receivingNumber,
-        deliveryNoteNumber: data.delivery_note_number,
-        receivingDate: data.receiving_date,
-        documentTruckSequence: data.document_truck_sequence || null,
-        queuePosition: data.queue_position,
-        truckId: data.truck_id || null,
-        licensePlateSnapshot: data.license_plate_snapshot,
-        driverId: data.driver_id || null,
-        driverNameSnapshot: data.driver_name_snapshot,
-        supplierId: data.supplier_id || null,
-        supplierNameSnapshot: data.supplier_name_snapshot,
-        manifestCount: data.manifest_count,
-        lineId: data.line_id || null,
-        status: 'DRAFT',
-        reconciliationStatus: 'PENDING',
-        notes: data.notes || null,
-        createdBy: user!.id,
-      })
-      .returning();
+    const newReceiving = await db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(receivings)
+        .values({
+          receivingNumber,
+          deliveryNoteNumber: data.delivery_note_number,
+          receivingDate: data.receiving_date,
+          documentTruckSequence: data.document_truck_sequence || null,
+          queuePosition: data.queue_position,
+          truckId: data.truck_id || null,
+          licensePlateSnapshot: data.license_plate_snapshot,
+          driverId: data.driver_id || null,
+          driverNameSnapshot: data.driver_name_snapshot,
+          supplierId: data.supplier_id || null,
+          supplierNameSnapshot: data.supplier_name_snapshot,
+          manifestCount: data.manifest_count,
+          lineId: data.line_id || null,
+          status: 'DRAFT',
+          reconciliationStatus: 'PENDING',
+          notes: data.notes || null,
+          createdBy: user!.id,
+        })
+        .returning();
 
-    await createAuditLog({
-      actorId: user!.id,
-      actorRole: user!.roles[0],
-      action: 'RECEIVING_CREATE',
-      entityType: 'receiving',
-      entityId: newReceiving.id,
-      afterData: newReceiving,
-      source: 'WEB',
+      await createAuditLog(
+        {
+          actorId: user!.id,
+          actorRole: user!.roles[0],
+          action: 'RECEIVING_CREATE',
+          entityType: 'receiving',
+          entityId: inserted.id,
+          afterData: inserted,
+          source: 'WEB',
+        },
+        tx
+      );
+
+      return inserted;
     });
 
     return NextResponse.json({ receiving: newReceiving }, { status: 201 });

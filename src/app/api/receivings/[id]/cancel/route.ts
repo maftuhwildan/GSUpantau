@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { db } from '@/db';
 import { receivings } from '@/db/schema';
 import { requirePermission } from '@/lib/auth';
-import { validationError, notFoundError, internalError, createErrorResponse } from '@/lib/errors';
+import { validationError, notFoundError, internalError, createErrorResponse, AppError, buildErrorResponse } from '@/lib/errors';
 import { createAuditLog } from '@/lib/audit';
 import { eq } from 'drizzle-orm';
 
@@ -30,47 +30,58 @@ export async function POST(
 
     const { reason } = parseResult.data;
 
-    const [existing] = await db
-      .select()
-      .from(receivings)
-      .where(eq(receivings.id, id));
+    const cancelledReceiving = await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(receivings)
+        .where(eq(receivings.id, id))
+        .for('update');
 
-    if (!existing) {
-      return notFoundError('Surat Jalan (Receiving) tidak ditemukan.');
-    }
+      if (!existing) {
+        throw new AppError('NOT_FOUND', 'Surat Jalan (Receiving) tidak ditemukan.', 404);
+      }
 
-    if (existing.status === 'COMPLETED' || existing.status === 'CANCELLED' || existing.status === 'COUNTING') {
-      return createErrorResponse(
-        'INVALID_STATUS',
-        `Surat Jalan dengan status ${existing.status} tidak dapat dibatalkan melalui tindakan ini.`,
-        400
+      if (existing.status === 'COMPLETED' || existing.status === 'CANCELLED' || existing.status === 'COUNTING') {
+        throw new AppError(
+          'INVALID_STATUS',
+          `Surat Jalan dengan status ${existing.status} tidak dapat dibatalkan melalui tindakan ini.`,
+          400
+        );
+      }
+
+      const [cancelled] = await tx
+        .update(receivings)
+        .set({
+          status: 'CANCELLED',
+          notes: existing.notes ? `${existing.notes} | Dibatalkan: ${reason}` : `Dibatalkan: ${reason}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(receivings.id, id))
+        .returning();
+
+      await createAuditLog(
+        {
+          actorId: user!.id,
+          actorRole: user!.roles[0],
+          action: 'RECEIVING_CANCEL',
+          entityType: 'receiving',
+          entityId: id,
+          beforeData: existing,
+          afterData: cancelled,
+          reason,
+          source: 'WEB',
+        },
+        tx
       );
-    }
 
-    const [cancelledReceiving] = await db
-      .update(receivings)
-      .set({
-        status: 'CANCELLED',
-        notes: existing.notes ? `${existing.notes} | Dibatalkan: ${reason}` : `Dibatalkan: ${reason}`,
-        updatedAt: new Date(),
-      })
-      .where(eq(receivings.id, id))
-      .returning();
-
-    await createAuditLog({
-      actorId: user!.id,
-      actorRole: user!.roles[0],
-      action: 'RECEIVING_CANCEL',
-      entityType: 'receiving',
-      entityId: id,
-      beforeData: existing,
-      afterData: cancelledReceiving,
-      reason,
-      source: 'WEB',
+      return cancelled;
     });
 
     return NextResponse.json({ receiving: cancelledReceiving });
   } catch (error) {
+    if (error instanceof AppError) {
+      return buildErrorResponse(error);
+    }
     console.error('POST /api/receivings/:id/cancel error:', error);
     return internalError();
   }

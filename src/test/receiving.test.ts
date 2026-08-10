@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { runSeed } from '../db/seed';
 import { db } from '../db';
 import { users, receivings, manifestRevisions, auditLogs } from '../db/schema';
 import { signSessionToken, SESSION_COOKIE_NAME } from '../lib/auth';
 import { eq } from 'drizzle-orm';
+import * as auditModule from '../lib/audit';
 import { GET as getReceivingsHandler, POST as createReceivingHandler } from '../app/api/receivings/route';
 import { GET as getReceivingDetailHandler, PATCH as updateReceivingHandler } from '../app/api/receivings/[id]/route';
 import { POST as publishReceivingHandler } from '../app/api/receivings/[id]/publish/route';
@@ -367,6 +368,350 @@ describe('Receiving Management (Batch 4)', () => {
         const res = await updateReceivingHandler(req, { params });
         expect(res.status).toBe(403);
       }
+    });
+  });
+
+  describe('Batch 12 Transactional Audit Logs & Rollbacks', () => {
+    it('should rollback receiving creation if audit log creation fails', async () => {
+      const deliveryNoteNumber = `SJ-FAIL-AUDIT-${Date.now()}`;
+      const spy = vi.spyOn(auditModule, 'createAuditLog').mockImplementationOnce(() => {
+        throw new Error('Database Audit Error');
+      });
+
+      const payload = {
+        receiving_date: '2026-08-07',
+        delivery_note_number: deliveryNoteNumber,
+        license_plate_snapshot: 'B 1111 FAIL',
+        driver_name_snapshot: 'Fail Driver',
+        supplier_name_snapshot: 'Fail Supplier',
+        manifest_count: 5000,
+      };
+
+      const req = new NextRequest('http://localhost:3000/api/receivings', {
+        method: 'POST',
+        headers: {
+          cookie: `${SESSION_COOKIE_NAME}=${adminToken}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const res = await createReceivingHandler(req);
+      expect(res.status).toBe(500);
+
+      // Verify receiving was rolled back and not persisted
+      const found = await db
+        .select()
+        .from(receivings)
+        .where(eq(receivings.deliveryNoteNumber, deliveryNoteNumber));
+      expect(found.length).toBe(0);
+
+      spy.mockRestore();
+    });
+
+    it('should rollback manifest revision and receiving update atomically if audit log creation fails', async () => {
+      const [waitingRec] = await db
+        .select()
+        .from(receivings)
+        .where(eq(receivings.status, 'WAITING'));
+
+      expect(waitingRec).toBeDefined();
+      const initialManifest = waitingRec.manifestCount;
+
+      const spy = vi.spyOn(auditModule, 'createAuditLog').mockImplementationOnce(() => {
+        throw new Error('Database Audit Error');
+      });
+
+      const params = Promise.resolve({ id: waitingRec.id });
+      const patchReq = new NextRequest(`http://localhost:3000/api/receivings/${waitingRec.id}`, {
+        method: 'PATCH',
+        headers: {
+          cookie: `${SESSION_COOKIE_NAME}=${adminToken}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          manifest_count: initialManifest + 999,
+          reason: 'Koreksi yang seharusnya rollback jika audit gagal',
+        }),
+      });
+
+      const res = await updateReceivingHandler(patchReq, { params });
+      expect(res.status).toBe(500);
+
+      // Verify manifest count was not updated
+      const [recheckedRec] = await db
+        .select()
+        .from(receivings)
+        .where(eq(receivings.id, waitingRec.id));
+      expect(recheckedRec.manifestCount).toBe(initialManifest);
+
+      // Verify no manifest revision entry was saved for this change
+      const revisions = await db
+        .select()
+        .from(manifestRevisions)
+        .where(eq(manifestRevisions.receivingId, waitingRec.id));
+      const failedRevision = revisions.find((r) => r.newManifestCount === initialManifest + 999);
+      expect(failedRevision).toBeUndefined();
+
+      spy.mockRestore();
+    });
+
+    it('should rollback publish action if audit log creation fails', async () => {
+      // Create draft receiving
+      const createReq = new NextRequest('http://localhost:3000/api/receivings', {
+        method: 'POST',
+        headers: {
+          cookie: `${SESSION_COOKIE_NAME}=${adminToken}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          receiving_date: '2026-08-07',
+          delivery_note_number: `SJ-PUB-FAIL-${Date.now()}`,
+          license_plate_snapshot: 'B 2222 FAIL',
+          driver_name_snapshot: 'Pub Fail Driver',
+          supplier_name_snapshot: 'Pub Fail Supplier',
+          manifest_count: 1500,
+        }),
+      });
+
+      const createRes = await createReceivingHandler(createReq);
+      const createJson = await createRes.json();
+      const receivingId = createJson.receiving.id;
+
+      const spy = vi.spyOn(auditModule, 'createAuditLog').mockImplementationOnce(() => {
+        throw new Error('Database Audit Error');
+      });
+
+      const params = Promise.resolve({ id: receivingId });
+      const pubReq = new NextRequest(`http://localhost:3000/api/receivings/${receivingId}/publish`, {
+        method: 'POST',
+        headers: {
+          cookie: `${SESSION_COOKIE_NAME}=${adminToken}`,
+        },
+      });
+
+      const pubRes = await publishReceivingHandler(pubReq, { params });
+      expect(pubRes.status).toBe(500);
+
+      // Verify status remains DRAFT
+      const [recheckedRec] = await db
+        .select()
+        .from(receivings)
+        .where(eq(receivings.id, receivingId));
+      expect(recheckedRec.status).toBe('DRAFT');
+
+      spy.mockRestore();
+    });
+
+    it('should rollback cancel action if audit log creation fails', async () => {
+      // Create draft receiving
+      const createReq = new NextRequest('http://localhost:3000/api/receivings', {
+        method: 'POST',
+        headers: {
+          cookie: `${SESSION_COOKIE_NAME}=${adminToken}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          receiving_date: '2026-08-07',
+          delivery_note_number: `SJ-CAN-FAIL-${Date.now()}`,
+          license_plate_snapshot: 'B 3333 FAIL',
+          driver_name_snapshot: 'Cancel Fail Driver',
+          supplier_name_snapshot: 'Cancel Fail Supplier',
+          manifest_count: 2500,
+        }),
+      });
+
+      const createRes = await createReceivingHandler(createReq);
+      const createJson = await createRes.json();
+      const receivingId = createJson.receiving.id;
+
+      const spy = vi.spyOn(auditModule, 'createAuditLog').mockImplementationOnce(() => {
+        throw new Error('Database Audit Error');
+      });
+
+      const params = Promise.resolve({ id: receivingId });
+      const cancelReq = new NextRequest(`http://localhost:3000/api/receivings/${receivingId}/cancel`, {
+        method: 'POST',
+        headers: {
+          cookie: `${SESSION_COOKIE_NAME}=${adminToken}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ reason: 'Pembatalan yang harus rollback' }),
+      });
+
+      const cancelRes = await cancelReceivingHandler(cancelReq, { params });
+      expect(cancelRes.status).toBe(500);
+
+      // Verify status remains DRAFT
+      const [recheckedRec] = await db
+        .select()
+        .from(receivings)
+        .where(eq(receivings.id, receivingId));
+      expect(recheckedRec.status).toBe('DRAFT');
+
+      spy.mockRestore();
+    });
+
+    it('should safely handle concurrent publish actions on the same receiving', async () => {
+      const createReq = new NextRequest('http://localhost:3000/api/receivings', {
+        method: 'POST',
+        headers: {
+          cookie: `${SESSION_COOKIE_NAME}=${adminToken}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          receiving_date: '2026-08-07',
+          delivery_note_number: `SJ-PUB-CONCURRENT-${Date.now()}`,
+          license_plate_snapshot: 'B 2222 FAIL',
+          driver_name_snapshot: 'Pub Fail Driver',
+          supplier_name_snapshot: 'Pub Fail Supplier',
+          manifest_count: 1500,
+        }),
+      });
+      const createRes = await createReceivingHandler(createReq);
+      const receivingId = (await createRes.json()).receiving.id;
+
+      // Two concurrent publishes
+      const req1 = new NextRequest(`http://localhost:3000/api/receivings/${receivingId}/publish`, {
+        method: 'POST',
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${adminToken}` },
+      });
+      const req2 = new NextRequest(`http://localhost:3000/api/receivings/${receivingId}/publish`, {
+        method: 'POST',
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${adminToken}` },
+      });
+
+      const params = Promise.resolve({ id: receivingId });
+      const [res1, res2] = await Promise.all([
+        publishReceivingHandler(req1, { params }),
+        publishReceivingHandler(req2, { params }),
+      ]);
+
+      const statuses = [res1.status, res2.status];
+      expect(statuses).toContain(200);
+      expect(statuses).toContain(400); // One fails due to INVALID_STATUS
+
+      // Verify status is WAITING
+      const [finalRec] = await db.select().from(receivings).where(eq(receivings.id, receivingId));
+      expect(finalRec.status).toBe('WAITING');
+
+      // Verify only one audit log
+      const logs = await db.select().from(auditLogs).where(eq(auditLogs.entityId, receivingId));
+      const publishLogs = logs.filter(l => l.action === 'RECEIVING_PUBLISH');
+      expect(publishLogs.length).toBe(1);
+    });
+
+    it('should safely handle concurrent cancel actions on the same receiving', async () => {
+      const createReq = new NextRequest('http://localhost:3000/api/receivings', {
+        method: 'POST',
+        headers: {
+          cookie: `${SESSION_COOKIE_NAME}=${adminToken}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          receiving_date: '2026-08-07',
+          delivery_note_number: `SJ-CAN-CONCURRENT-${Date.now()}`,
+          license_plate_snapshot: 'B 3333 FAIL',
+          driver_name_snapshot: 'Cancel Fail Driver',
+          supplier_name_snapshot: 'Cancel Fail Supplier',
+          manifest_count: 2500,
+        }),
+      });
+      const createRes = await createReceivingHandler(createReq);
+      const receivingId = (await createRes.json()).receiving.id;
+
+      // Two concurrent cancels
+      const req1 = new NextRequest(`http://localhost:3000/api/receivings/${receivingId}/cancel`, {
+        method: 'POST',
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${adminToken}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ reason: 'Cancel 1' }),
+      });
+      const req2 = new NextRequest(`http://localhost:3000/api/receivings/${receivingId}/cancel`, {
+        method: 'POST',
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${adminToken}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ reason: 'Cancel 2' }),
+      });
+
+      const params = Promise.resolve({ id: receivingId });
+      const [res1, res2] = await Promise.all([
+        cancelReceivingHandler(req1, { params }),
+        cancelReceivingHandler(req2, { params }),
+      ]);
+
+      const statuses = [res1.status, res2.status];
+      expect(statuses).toContain(200);
+      expect(statuses).toContain(400); // One fails due to INVALID_STATUS
+
+      // Verify status is CANCELLED
+      const [finalRec] = await db.select().from(receivings).where(eq(receivings.id, receivingId));
+      expect(finalRec.status).toBe('CANCELLED');
+
+      // Verify only one audit log
+      const logs = await db.select().from(auditLogs).where(eq(auditLogs.entityId, receivingId));
+      const cancelLogs = logs.filter(l => l.action === 'RECEIVING_CANCEL');
+      expect(cancelLogs.length).toBe(1);
+    });
+
+    it('should safely handle concurrent manifest revisions on the same receiving', async () => {
+      // Setup: Create and Publish
+      const createReq = new NextRequest('http://localhost:3000/api/receivings', {
+        method: 'POST',
+        headers: {
+          cookie: `${SESSION_COOKIE_NAME}=${adminToken}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          receiving_date: '2026-08-07',
+          delivery_note_number: `SJ-UPDATE-CONCURRENT-${Date.now()}`,
+          license_plate_snapshot: 'B 4444 UPDATE',
+          driver_name_snapshot: 'Driver',
+          supplier_name_snapshot: 'Supplier',
+          manifest_count: 1000,
+        }),
+      });
+      const createRes = await createReceivingHandler(createReq);
+      const receivingId = (await createRes.json()).receiving.id;
+
+      const pubReq = new NextRequest(`http://localhost:3000/api/receivings/${receivingId}/publish`, {
+        method: 'POST',
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${adminToken}` },
+      });
+      await publishReceivingHandler(pubReq, { params: Promise.resolve({ id: receivingId }) });
+
+      // Two concurrent updates to manifest_count
+      const req1 = new NextRequest(`http://localhost:3000/api/receivings/${receivingId}`, {
+        method: 'PATCH',
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${adminToken}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ manifest_count: 1100, reason: 'Revision 1' }),
+      });
+      const req2 = new NextRequest(`http://localhost:3000/api/receivings/${receivingId}`, {
+        method: 'PATCH',
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${adminToken}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ manifest_count: 1200, reason: 'Revision 2' }),
+      });
+
+      const params = Promise.resolve({ id: receivingId });
+      const [res1, res2] = await Promise.all([
+        updateReceivingHandler(req1, { params }),
+        updateReceivingHandler(req2, { params }),
+      ]);
+
+      expect(res1.status).toBe(200);
+      expect(res2.status).toBe(200);
+
+      const [finalRec] = await db.select().from(receivings).where(eq(receivings.id, receivingId));
+      expect([1100, 1200].includes(finalRec.manifestCount)).toBe(true);
+
+      // Check manifest_revisions
+      const revisions = await db.select().from(manifestRevisions).where(eq(manifestRevisions.receivingId, receivingId));
+      expect(revisions.length).toBe(2);
+
+      // We don't know which one executed first, but one must have old=1000 and new=the other's old
+      const rev1 = revisions.find(r => r.oldManifestCount === 1000);
+      expect(rev1).toBeDefined();
+
+      const rev2 = revisions.find(r => r.oldManifestCount === rev1!.newManifestCount);
+      expect(rev2).toBeDefined();
     });
   });
 });

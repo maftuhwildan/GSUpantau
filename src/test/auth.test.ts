@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { db } from '../db';
 import * as schema from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { runSeed } from '../db/seed';
+import * as auditModule from '../lib/audit';
 import {
   signSessionToken,
   verifySessionToken,
@@ -305,6 +306,65 @@ describe('Auth, Permissions & Security Hardening (Batch 11)', () => {
       });
       const res = await loginHandler(req);
       expect(res.status).toBe(400);
+    });
+
+    it('should NOT update lastLoginAt when login audit log creation fails (AC 3)', async () => {
+      const [adminBefore] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.email, 'admin@local.test'));
+      const initialLastLogin = adminBefore.lastLoginAt;
+
+      const spy = vi.spyOn(auditModule, 'createAuditLog').mockImplementationOnce(() => {
+        throw new Error('Database Audit Error');
+      });
+
+      const req = new NextRequest('http://localhost:3000/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: 'admin@local.test',
+          password: 'password',
+        }),
+      });
+
+      const res = await loginHandler(req);
+      expect(res.status).toBe(500);
+
+      const [adminAfter] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.email, 'admin@local.test'));
+      expect(adminAfter.lastLoginAt?.getTime()).toBe(initialLastLogin?.getTime());
+
+      spy.mockRestore();
+    });
+
+    it('should create audit log with entityType: USER on successful login', async () => {
+      // Clear previous audit logs for this user to make assertion easier
+      await db.delete(schema.auditLogs).where(eq(schema.auditLogs.entityId, adminUserId));
+
+      const req = new NextRequest('http://localhost:3000/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: 'admin@local.test',
+          password: 'password',
+        }),
+      });
+
+      const res = await loginHandler(req);
+      expect(res.status).toBe(200);
+
+      const logs = await db
+        .select()
+        .from(schema.auditLogs)
+        .where(eq(schema.auditLogs.entityId, adminUserId));
+
+      expect(logs).toHaveLength(1);
+      const auditLog = logs[0];
+      expect(auditLog.action).toBe('LOGIN');
+      expect(auditLog.entityType).toBe('USER');
+      expect(auditLog.entityId).toBe(adminUserId);
+      expect(auditLog.actorId).toBe(adminUserId);
     });
 
     it('should clear session cookie on logout', async () => {

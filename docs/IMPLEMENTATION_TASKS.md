@@ -650,6 +650,7 @@ Tasks:
 - Add `DATABASE_TEST_URL` and a serial `test:pg` configuration.
 - Refuse destructive integration setup unless the target database ends in `_test`.
 - Run migration, seed, and concurrency integration tests only against that test database.
+- Ensure PostgreSQL concurrency scenarios from previous batches (e.g., session transitions and receiving mutations) are explicitly verified in integration tests.
 - Add `/api/health` checks for app, database, migration state, WebSocket, and version.
 - Bind PostgreSQL Compose port only to the Tailscale address or internal Docker network.
 - Add restart policy, persistent volume, and healthcheck to deployment Compose.

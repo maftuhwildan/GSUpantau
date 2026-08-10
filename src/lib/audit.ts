@@ -19,28 +19,23 @@ export async function createAuditLog(
   params: CreateAuditLogParams,
   tx?: any
 ) {
-  try {
-    const dbClient = tx || db;
-    const [log] = await dbClient
-      .insert(auditLogs)
-      .values({
-        actorId: params.actorId || null,
-        actorRole: params.actorRole || null,
-        action: params.action,
-        entityType: params.entityType,
-        entityId: params.entityId,
-        beforeData: params.beforeData ? JSON.parse(JSON.stringify(params.beforeData)) : null,
-        afterData: params.afterData ? JSON.parse(JSON.stringify(params.afterData)) : null,
-        reason: params.reason || null,
-        source: params.source || 'WEB',
-        requestId: params.requestId || null,
-      })
-      .returning();
-    return log;
-  } catch (error) {
-    console.error('Failed to create audit log:', error);
-    return null;
-  }
+  const dbClient = tx || db;
+  const [log] = await dbClient
+    .insert(auditLogs)
+    .values({
+      actorId: params.actorId || null,
+      actorRole: params.actorRole || null,
+      action: params.action,
+      entityType: params.entityType,
+      entityId: params.entityId,
+      beforeData: params.beforeData ? JSON.parse(JSON.stringify(params.beforeData)) : null,
+      afterData: params.afterData ? JSON.parse(JSON.stringify(params.afterData)) : null,
+      reason: params.reason || null,
+      source: params.source || 'WEB',
+      requestId: params.requestId || null,
+    })
+    .returning();
+  return log;
 }
 
 export const recordAuditLog = createAuditLog;
