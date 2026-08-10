@@ -57,14 +57,19 @@ export async function POST(req: NextRequest) {
       .returning();
 
     const effectiveStatus = deriveEffectiveDeviceStatus(updatedDevice, settings, now);
+    const healthPayload = buildDeviceStatusPayload(updatedDevice, settings, now);
+    wsBroadcaster.broadcast('device.heartbeat_received', healthPayload);
     if (effectiveStatus !== previousEffectiveStatus) {
-      wsBroadcaster.broadcast('device.status_updated', buildDeviceStatusPayload(updatedDevice, settings, now));
+      wsBroadcaster.broadcast('device.status_updated', healthPayload);
     }
 
     return NextResponse.json({
       status: 'OK',
       server_time: now.toISOString(),
       device_status: effectiveStatus,
+      last_heartbeat_at: updatedDevice.lastHeartbeatAt?.toISOString() ?? now.toISOString(),
+      firmware_version: updatedDevice.firmwareVersion,
+      wifi_rssi: updatedDevice.wifiRssi,
     });
   } catch (error) {
     console.error('POST /api/device/heartbeat error:', error);

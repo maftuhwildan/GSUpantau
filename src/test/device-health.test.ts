@@ -18,6 +18,7 @@ import { POST as heartbeatHandler } from '../app/api/device/heartbeat/route';
 import { POST as eventsHandler } from '../app/api/device/events/route';
 import { GET as operatorDashboardHandler } from '../app/api/dashboard/operator/route';
 import { GET as adminDashboardHandler } from '../app/api/dashboard/admin/route';
+import { GET as linesHandler } from '../app/api/lines/route';
 import { eq } from 'drizzle-orm';
 
 describe('Batch 15: Device Health and Offline Detection', () => {
@@ -220,6 +221,7 @@ describe('Batch 15: Device Health and Offline Detection', () => {
     expect(operatorJson.device.status).toBe('OFFLINE');
     expect(new Date(operatorJson.device.lastHeartbeatAt).getTime()).toBe(staleHeartbeat.getTime());
     expect(operatorJson.activeSession.lastDetection).not.toBe(operatorJson.device.lastHeartbeatAt);
+    expect(JSON.stringify(operatorJson)).not.toContain('credentialHash');
 
     const adminRes = await adminDashboardHandler(
       new NextRequest('http://localhost:3000/api/dashboard/admin', {
@@ -231,6 +233,43 @@ describe('Batch 15: Device Health and Offline Detection', () => {
     const lineOverview = adminJson.linesOverview.find((item: any) => item.line.id === line1.id);
     expect(lineOverview.device.status).toBe('OFFLINE');
     expect(new Date(lineOverview.device.lastHeartbeatAt).getTime()).toBe(staleHeartbeat.getTime());
+    expect(JSON.stringify(adminJson)).not.toContain('credentialHash');
+  });
+
+  it('returns current device health from lines API without credentials and scopes Operators', async () => {
+    await setSetting('heartbeat_degraded_threshold_seconds', 5);
+    await setSetting('heartbeat_offline_threshold_seconds', 10);
+    const staleHeartbeat = new Date(Date.now() - 11_000);
+    await db
+      .update(devices)
+      .set({ status: 'ONLINE', lastHeartbeatAt: staleHeartbeat })
+      .where(eq(devices.id, device1.id));
+
+    const adminRes = await linesHandler(
+      new NextRequest('http://localhost:3000/api/lines', {
+        headers: { cookie: adminCookie },
+      })
+    );
+    expect(adminRes.status).toBe(200);
+    const adminJson = await adminRes.json();
+    const adminLine = adminJson.lines.find((line: any) => line.id === line1.id);
+    const adminDevice = adminLine.devices.find((device: any) => device.id === device1.id);
+    expect(adminDevice.status).toBe('OFFLINE');
+    expect(new Date(adminDevice.lastHeartbeatAt).getTime()).toBe(staleHeartbeat.getTime());
+    expect(JSON.stringify(adminJson)).not.toContain('credentialHash');
+    expect(JSON.stringify(adminJson)).not.toContain(device1.credentialHash);
+
+    const operatorRes = await linesHandler(
+      new NextRequest('http://localhost:3000/api/lines', {
+        headers: { cookie: operatorCookie },
+      })
+    );
+    expect(operatorRes.status).toBe(200);
+    const operatorJson = await operatorRes.json();
+    expect(operatorJson.lines).toHaveLength(1);
+    expect(operatorJson.lines[0].id).toBe(line1.id);
+    expect(operatorJson.lines[0].devices).toHaveLength(1);
+    expect(operatorJson.lines[0].devices[0].lineId).toBe(line1.id);
   });
 
   it('does not refresh lastHeartbeatAt from detection-only uploads', async () => {
@@ -298,6 +337,30 @@ describe('Batch 15: Device Health and Offline Detection', () => {
     expect(messages.filter((message) => message.type === 'device.status_updated')).toHaveLength(1);
   });
 
+  it('broadcasts a fresh heartbeat timestamp without emitting a false status change', async () => {
+    await db
+      .update(devices)
+      .set({ status: 'ONLINE', lastHeartbeatAt: new Date() })
+      .where(eq(devices.id, device1.id));
+
+    const messages: WebSocketMessage[] = [];
+    const unsubscribe = wsBroadcaster.subscribe((message) => messages.push(message));
+    const res = await heartbeatHandler(heartbeatRequest());
+    unsubscribe();
+
+    expect(res.status).toBe(200);
+    expect(messages.filter((message) => message.type === 'device.heartbeat_received')).toHaveLength(1);
+    expect(messages.filter((message) => message.type === 'device.status_updated')).toHaveLength(0);
+    const heartbeatMessage = messages.find((message) => message.type === 'device.heartbeat_received');
+    expect(heartbeatMessage?.payload).toMatchObject({
+      device_id: device1.id,
+      status: 'ONLINE',
+    });
+    expect(new Date(heartbeatMessage!.payload.last_heartbeat_at as string).getTime()).toBeGreaterThan(
+      Date.now() - 5_000
+    );
+  });
+
   it('heartbeat brings a stale non-maintenance device back ONLINE without changing boot_id idempotency rules', async () => {
     await setSetting('heartbeat_degraded_threshold_seconds', 5);
     await setSetting('heartbeat_offline_threshold_seconds', 10);
@@ -306,9 +369,18 @@ describe('Batch 15: Device Health and Offline Detection', () => {
       .set({ status: 'OFFLINE', lastHeartbeatAt: new Date(Date.now() - 11_000) })
       .where(eq(devices.id, device1.id));
 
+    const messages: WebSocketMessage[] = [];
+    const unsubscribe = wsBroadcaster.subscribe((message) => messages.push(message));
     const res = await heartbeatHandler(heartbeatRequest());
     expect(res.status).toBe(200);
-    expect((await res.json()).device_status).toBe('ONLINE');
+    const heartbeatJson = await res.json();
+    expect(heartbeatJson.device_status).toBe('ONLINE');
+    expect(new Date(heartbeatJson.last_heartbeat_at).getTime()).toBeGreaterThan(Date.now() - 5_000);
+    expect(heartbeatJson.firmware_version).toBe('v15.0.0-test');
+    expect(heartbeatJson.wifi_rssi).toBe(-49);
+    expect(messages.some((message) => message.type === 'device.heartbeat_received')).toBe(true);
+    expect(messages.some((message) => message.type === 'device.status_updated')).toBe(true);
+    unsubscribe();
 
     const [updated] = await db.select().from(devices).where(eq(devices.id, device1.id));
     expect(updated.status).toBe('ONLINE');
@@ -350,5 +422,51 @@ describe('Batch 15: Device Health and Offline Detection', () => {
     const duplicateJson = await duplicateRes.json();
     expect(duplicateJson.accepted).toBe(0);
     expect(duplicateJson.duplicates).toBe(1);
+  });
+
+  it('broadcasts batched heartbeat events after refreshing the heartbeat timestamp', async () => {
+    const staleHeartbeat = new Date(Date.now() - 60_000);
+    await db
+      .update(devices)
+      .set({ status: 'ONLINE', lastHeartbeatAt: staleHeartbeat })
+      .where(eq(devices.id, device1.id));
+
+    const messages: WebSocketMessage[] = [];
+    const unsubscribe = wsBroadcaster.subscribe((message) => messages.push(message));
+    const res = await eventsHandler(
+      new NextRequest('http://localhost:3000/api/device/events', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer secret-device-key-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          device_id: device1.deviceCode,
+          line_id: line1.lineCode,
+          events: [
+            {
+              event_id: `B15-HEARTBEAT-${Date.now()}`,
+              boot_id: `B15-HEARTBEAT-BOOT-${Date.now()}`,
+              sequence: 0,
+              event_type: 'HEARTBEAT',
+              device_time: new Date().toISOString(),
+              event_mode: 'PRODUCTION',
+            },
+          ],
+        }),
+      })
+    );
+    unsubscribe();
+
+    expect(res.status).toBe(200);
+    const [updated] = await db.select().from(devices).where(eq(devices.id, device1.id));
+    expect(updated.lastHeartbeatAt!.getTime()).toBeGreaterThan(staleHeartbeat.getTime());
+    const heartbeatMessage = messages.find((message) => message.type === 'device.heartbeat_received');
+    expect(heartbeatMessage?.payload).toMatchObject({
+      device_id: device1.id,
+      device_code: device1.deviceCode,
+      line_id: line1.id,
+      status: 'ONLINE',
+    });
   });
 });

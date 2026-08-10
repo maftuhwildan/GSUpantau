@@ -105,6 +105,25 @@ export function withEffectiveDeviceStatus<TDevice extends DeviceHealthInput>(
   };
 }
 
+export function toPublicDeviceHealth(
+  device: typeof devices.$inferSelect,
+  settings: Pick<DeviceHealthSettings, 'degradedThresholdSeconds' | 'offlineThresholdSeconds'>,
+  now: Date = new Date()
+) {
+  const effectiveDevice = withEffectiveDeviceStatus(device, settings, now);
+  return {
+    id: effectiveDevice.id,
+    deviceCode: effectiveDevice.deviceCode,
+    lineId: effectiveDevice.lineId,
+    name: effectiveDevice.name,
+    status: effectiveDevice.status,
+    storedStatus: effectiveDevice.storedStatus,
+    lastHeartbeatAt: effectiveDevice.lastHeartbeatAt,
+    firmwareVersion: effectiveDevice.firmwareVersion,
+    wifiRssi: effectiveDevice.wifiRssi,
+  };
+}
+
 export function shouldPersistOnlineStatus(storedStatus: string) {
   return storedStatus !== 'MAINTENANCE';
 }

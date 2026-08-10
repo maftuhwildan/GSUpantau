@@ -40,6 +40,7 @@ export default function AdminSensorActivityPage() {
       const type = (lastMessage as any).type;
       if (
         type === 'sensor.event_received' ||
+        type === 'device.heartbeat_received' ||
         type === 'device.status_updated' ||
         type === 'realtime.reconnected' ||
         type === 'realtime.poll'

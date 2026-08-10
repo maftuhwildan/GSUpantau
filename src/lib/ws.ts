@@ -6,6 +6,7 @@ export interface WebSocketMessage {
     | 'session.cancelled'
     | 'receiving.queue_updated'
     | 'sensor.event_received'
+    | 'device.heartbeat_received'
     | 'device.status_updated'
     | 'audit.created';
   occurred_at: string;

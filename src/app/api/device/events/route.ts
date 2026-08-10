@@ -309,6 +309,7 @@ export async function POST(req: NextRequest) {
       }
 
       let deviceStatusBroadcast: Record<string, unknown> | null = null;
+      let deviceHeartbeatBroadcast: Record<string, unknown> | null = null;
       if (hasHeartbeatEvent && settings) {
         const heartbeatAt = new Date();
         const deviceUpdate: Partial<typeof devices.$inferInsert> = {
@@ -326,9 +327,10 @@ export async function POST(req: NextRequest) {
           .returning();
 
         const newEffectiveStatus = deriveEffectiveDeviceStatus(updatedDevice, settings, heartbeatAt);
+        deviceHeartbeatBroadcast = buildDeviceStatusPayload(updatedDevice, settings, heartbeatAt);
         deviceStatusBroadcast =
           newEffectiveStatus !== previousEffectiveStatus
-            ? buildDeviceStatusPayload(updatedDevice, settings, heartbeatAt)
+            ? deviceHeartbeatBroadcast
             : null;
       }
 
@@ -338,6 +340,7 @@ export async function POST(req: NextRequest) {
         eventResults,
         sensorBroadcasts,
         counterBroadcast,
+        deviceHeartbeatBroadcast,
         deviceStatusBroadcast,
         bootChangeDiagnostic,
       };
@@ -366,6 +369,9 @@ export async function POST(req: NextRequest) {
     }
     if (ingestionResult.counterBroadcast) {
       wsBroadcaster.broadcast('session.counter_updated', ingestionResult.counterBroadcast);
+    }
+    if (ingestionResult.deviceHeartbeatBroadcast) {
+      wsBroadcaster.broadcast('device.heartbeat_received', ingestionResult.deviceHeartbeatBroadcast);
     }
     if (ingestionResult.deviceStatusBroadcast) {
       wsBroadcaster.broadcast('device.status_updated', ingestionResult.deviceStatusBroadcast);

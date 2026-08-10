@@ -64,6 +64,7 @@ export default function OperatorDashboardPage() {
         type === 'session.cancelled' || 
         type === 'receiving.queue_updated' ||
         type === 'session.counter_updated' ||
+        type === 'device.heartbeat_received' ||
         type === 'device.status_updated' ||
         type === 'realtime.reconnected' ||
         type === 'realtime.poll'

@@ -57,6 +57,7 @@ export default function AdminDashboardPage() {
         type === 'session.cancelled' || 
         type === 'receiving.queue_updated' ||
         type === 'session.counter_updated' ||
+        type === 'device.heartbeat_received' ||
         type === 'device.status_updated' ||
         type === 'audit.created' ||
         type === 'realtime.reconnected' ||

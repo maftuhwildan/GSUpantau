@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import 'next/dist/server/node-environment-baseline';
 import { createServer } from 'node:http';
 import next from 'next';
 import { attachWebSocketEndpoint } from './src/server/realtime/websocket-server';
@@ -18,14 +19,14 @@ async function main() {
     dev,
     hostname,
     port,
-    customServer: false,
+    customServer: true,
     httpServer: server,
   } as Parameters<typeof next>[0]);
   handle = app.getRequestHandler();
-  const nextUpgradeHandler = app.getUpgradeHandler();
 
   await app.prepare();
 
+  const nextUpgradeHandler = app.getUpgradeHandler();
   attachWebSocketEndpoint(server, nextUpgradeHandler);
   startDeviceHealthMonitor();
 

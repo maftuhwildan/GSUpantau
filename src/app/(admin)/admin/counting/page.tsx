@@ -80,6 +80,8 @@ export default function AdminCountingPage() {
       type === 'session.counter_updated' ||
       type === 'session.finished' ||
       type === 'session.cancelled' ||
+      type === 'device.heartbeat_received' ||
+      type === 'device.status_updated' ||
       type === 'realtime.reconnected' ||
       type === 'realtime.poll'
     ) {

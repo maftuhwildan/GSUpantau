@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
             name: dev.name,
             status: dev.status,
             firmwareVersion: dev.firmwareVersion,
+            wifiRssi: dev.wifiRssi,
             lastHeartbeatAt: dev.lastHeartbeatAt,
             defaultSecret,
           };

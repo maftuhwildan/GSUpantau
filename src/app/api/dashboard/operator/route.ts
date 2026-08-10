@@ -3,7 +3,7 @@ import { db } from '@/db';
 import { lines, devices, receivingSessions, receivings, sensorEvents } from '@/db/schema';
 import { requirePermission } from '@/lib/auth';
 import { forbiddenError, internalError } from '@/lib/errors';
-import { getDeviceHealthSettings, withEffectiveDeviceStatus } from '@/lib/device-health';
+import { getDeviceHealthSettings, toPublicDeviceHealth } from '@/lib/device-health';
 import { getStartOfTodayInSiteTimezone, getStartOfTomorrowInSiteTimezone } from '@/lib/time';
 import { eq, and, sql, desc, gte, lt, asc, or, isNull } from 'drizzle-orm';
 
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     const line = await db.query.lines.findFirst({ where: eq(lines.id, lineId) });
     const settings = await getDeviceHealthSettings();
     const deviceRecord = await db.query.devices.findFirst({ where: eq(devices.lineId, lineId) });
-    const device = deviceRecord ? withEffectiveDeviceStatus(deviceRecord, settings) : null;
+    const device = deviceRecord ? toPublicDeviceHealth(deviceRecord, settings) : null;
 
     const activeSession = await db.query.receivingSessions.findFirst({
       where: and(eq(receivingSessions.lineId, lineId), eq(receivingSessions.status, 'COUNTING')),

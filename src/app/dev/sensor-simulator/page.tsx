@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { applyDeviceHealthViewUpdate } from "@/lib/device-health-view";
 import {
   Radio,
   Play,
@@ -30,6 +31,7 @@ interface DeviceOption {
   name: string;
   status: string;
   firmwareVersion: string;
+  wifiRssi?: number | null;
   lastHeartbeatAt: string | null;
   defaultSecret: string;
 }
@@ -112,6 +114,16 @@ export default function SensorSimulatorPage() {
     setLogs((prev) => [entry, ...prev].slice(0, 100));
   };
 
+  const fetchSimulatorOptions = useCallback(async () => {
+    const response = await fetch("/api/dev/simulator/options");
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    const linesList: LineOption[] = data.lines || [];
+    setOptions(linesList);
+    return linesList;
+  }, []);
+
   // Fetch session & simulator options on load
   useEffect(() => {
     async function init() {
@@ -129,20 +141,14 @@ export default function SensorSimulatorPage() {
           }
         }
 
-        const optRes = await fetch("/api/dev/simulator/options");
-        if (optRes.ok) {
-          const data = await optRes.json();
-          const linesList: LineOption[] = data.lines || [];
-          setOptions(linesList);
-
-          if (linesList.length > 0) {
-            const firstLine = linesList[0];
-            setSelectedLineCode(firstLine.lineCode);
-            if (firstLine.devices.length > 0) {
-              const firstDev = firstLine.devices[0];
-              setSelectedDeviceCode(firstDev.deviceCode);
-              setDeviceSecret(firstDev.defaultSecret || "secret-device-key-01");
-            }
+        const linesList = await fetchSimulatorOptions();
+        if (linesList.length > 0) {
+          const firstLine = linesList[0];
+          setSelectedLineCode(firstLine.lineCode);
+          if (firstLine.devices.length > 0) {
+            const firstDev = firstLine.devices[0];
+            setSelectedDeviceCode(firstDev.deviceCode);
+            setDeviceSecret(firstDev.defaultSecret || "secret-device-key-01");
           }
         }
       } catch (err) {
@@ -152,7 +158,17 @@ export default function SensorSimulatorPage() {
       }
     }
     init();
-  }, []);
+  }, [fetchSimulatorOptions]);
+
+  useEffect(() => {
+    if (loading) return;
+    const interval = setInterval(() => {
+      fetchSimulatorOptions().catch((err) => {
+        console.error("Gagal memperbarui status simulator:", err);
+      });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [loading, fetchSimulatorOptions]);
 
   // Sync selected line / device options
   const handleLineChange = (lineCode: string) => {
@@ -183,14 +199,13 @@ export default function SensorSimulatorPage() {
     }
   };
 
+  const selectedLineId = options.find((line) => line.lineCode === selectedLineCode)?.id;
+
   // Fetch active session info for line
   const fetchActiveSession = useCallback(async () => {
-    if (!selectedLineCode) return;
+    if (!selectedLineId) return;
     try {
-      const foundLine = options.find((l) => l.lineCode === selectedLineCode);
-      if (!foundLine) return;
-
-      const res = await fetch(`/api/lines/${foundLine.id}/active-session`);
+      const res = await fetch(`/api/lines/${selectedLineId}/active-session`);
       if (res.ok) {
         const data = await res.json();
         if (data.activeSession) {
@@ -207,7 +222,7 @@ export default function SensorSimulatorPage() {
     } catch (err) {
       console.error("Gagal mengecek sesi aktif:", err);
     }
-  }, [selectedLineCode, options]);
+  }, [selectedLineId]);
 
   useEffect(() => {
     fetchActiveSession();
@@ -324,6 +339,17 @@ export default function SensorSimulatorPage() {
 
       const resJson = await res.json();
       addLog("Heartbeat", res.status, body, resJson, res.ok);
+      if (res.ok) {
+        setOptions((currentOptions) =>
+          applyDeviceHealthViewUpdate(currentOptions, {
+            deviceCode: selectedDeviceCode,
+            status: resJson.device_status,
+            lastHeartbeatAt: resJson.last_heartbeat_at || resJson.server_time,
+            firmwareVersion: resJson.firmware_version,
+            wifiRssi: resJson.wifi_rssi,
+          })
+        );
+      }
     } catch (err: any) {
       addLog("Heartbeat Error", 500, body, { error: err.message }, false);
     }
