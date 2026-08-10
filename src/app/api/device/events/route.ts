@@ -6,6 +6,12 @@ import { verifyDeviceCredential } from '@/lib/device-auth';
 import { internalError, validationError } from '@/lib/errors';
 import { lockCountingLine } from '@/lib/counting-lock';
 import { wsBroadcaster } from '@/lib/ws';
+import {
+  buildDeviceStatusPayload,
+  deriveEffectiveDeviceStatus,
+  getDeviceHealthSettings,
+  shouldPersistOnlineStatus,
+} from '@/lib/device-health';
 import { eq, and, or, sql, desc } from 'drizzle-orm';
 
 const ISO_8601_WITH_TIMEZONE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
@@ -105,6 +111,10 @@ export async function POST(req: NextRequest) {
     // Verify Device Auth & Line match
     const { device, line, errorResponse } = await verifyDeviceCredential(req, device_id, line_id);
     if (errorResponse) return errorResponse;
+
+    const hasHeartbeatEvent = events.some((evt) => evt.event_type === 'HEARTBEAT');
+    const settings = hasHeartbeatEvent ? await getDeviceHealthSettings() : null;
+    const previousEffectiveStatus = settings ? deriveEffectiveDeviceStatus(device!, settings) : null;
 
     const ingestionResult = await db.transaction(async (tx) => {
       const lockedLine = await lockCountingLine(tx, line!.id);
@@ -277,15 +287,6 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      await tx
-        .update(devices)
-        .set({
-          lastHeartbeatAt: new Date(),
-          status: 'ONLINE',
-          updatedAt: new Date(),
-        })
-        .where(eq(devices.id, device!.id));
-
       let counterBroadcast: Record<string, unknown> | null = null;
       if (hasAssignedDetection && activeSession) {
         const [countResult] = await tx
@@ -307,12 +308,37 @@ export async function POST(req: NextRequest) {
         };
       }
 
+      let deviceStatusBroadcast: Record<string, unknown> | null = null;
+      if (hasHeartbeatEvent && settings) {
+        const heartbeatAt = new Date();
+        const deviceUpdate: Partial<typeof devices.$inferInsert> = {
+          lastHeartbeatAt: heartbeatAt,
+          updatedAt: heartbeatAt,
+        };
+        if (shouldPersistOnlineStatus(device!.status)) {
+          deviceUpdate.status = 'ONLINE';
+        }
+
+        const [updatedDevice] = await tx
+          .update(devices)
+          .set(deviceUpdate)
+          .where(eq(devices.id, device!.id))
+          .returning();
+
+        const newEffectiveStatus = deriveEffectiveDeviceStatus(updatedDevice, settings, heartbeatAt);
+        deviceStatusBroadcast =
+          newEffectiveStatus !== previousEffectiveStatus
+            ? buildDeviceStatusPayload(updatedDevice, settings, heartbeatAt)
+            : null;
+      }
+
       return {
         acceptedCount,
         duplicateCount,
         eventResults,
         sensorBroadcasts,
         counterBroadcast,
+        deviceStatusBroadcast,
         bootChangeDiagnostic,
       };
     });
@@ -340,6 +366,9 @@ export async function POST(req: NextRequest) {
     }
     if (ingestionResult.counterBroadcast) {
       wsBroadcaster.broadcast('session.counter_updated', ingestionResult.counterBroadcast);
+    }
+    if (ingestionResult.deviceStatusBroadcast) {
+      wsBroadcaster.broadcast('device.status_updated', ingestionResult.deviceStatusBroadcast);
     }
 
     return NextResponse.json({

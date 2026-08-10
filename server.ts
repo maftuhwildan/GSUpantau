@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { createServer } from 'node:http';
 import next from 'next';
 import { attachWebSocketEndpoint } from './src/server/realtime/websocket-server';
+import { startDeviceHealthMonitor } from './src/server/device-health-monitor';
 
 const port = Number(process.env.PORT || 3000);
 const hostname = process.env.HOSTNAME || '0.0.0.0';
@@ -26,6 +27,7 @@ async function main() {
   await app.prepare();
 
   attachWebSocketEndpoint(server, nextUpgradeHandler);
+  startDeviceHealthMonitor();
 
   server.listen(port, hostname, () => {
     console.log(

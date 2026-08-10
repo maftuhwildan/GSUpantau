@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { lines, devices } from '@/db/schema';
 import { requireRole } from '@/lib/auth';
 import { internalError } from '@/lib/errors';
+import { getDeviceHealthSettings, withEffectiveDeviceStatus } from '@/lib/device-health';
 
 export async function GET(req: NextRequest) {
   const { errorResponse } = await requireRole(req, 'ADMIN');
@@ -12,11 +13,13 @@ export async function GET(req: NextRequest) {
 
     const allLines = await db.select().from(lines).orderBy(lines.lineCode);
     const allDevices = await db.select().from(devices);
+    const settings = await getDeviceHealthSettings();
 
     const result = allLines.map((line) => {
       const lineDevices = allDevices
         .filter((d) => d.lineId === line.id)
-        .map((dev) => {
+        .map((deviceRecord) => {
+          const dev = withEffectiveDeviceStatus(deviceRecord, settings);
           let defaultSecret = '';
           if (dev.deviceCode === 'ESP32-LINE-01') {
             defaultSecret = 'secret-device-key-01';

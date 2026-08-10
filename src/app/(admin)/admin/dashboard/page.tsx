@@ -77,6 +77,12 @@ export default function AdminDashboardPage() {
 
   if (!data) return null;
 
+  const deviceStatusClass = (status?: string) => {
+    if (status === 'ONLINE') return 'text-emerald-700 dark:text-emerald-400';
+    if (status === 'DEGRADED') return 'text-amber-700 dark:text-amber-400';
+    return 'text-red-700 dark:text-red-400';
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-sm">
@@ -182,8 +188,24 @@ export default function AdminDashboardPage() {
                         <Badge variant="secondary" className="text-[10px]">IDLE</Badge>
                       )}
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {item.device ? `${item.device.deviceCode} • RSSI ${item.device.wifiRssi || '-'}dBm` : 'Tidak ada perangkat'}
+                    <span className="text-xs text-muted-foreground text-right">
+                      {item.device ? (
+                        <>
+                          <span className={`font-semibold ${deviceStatusClass(item.device.status)}`}>
+                            {item.device.status}
+                          </span>
+                          {` ${item.device.deviceCode} • RSSI ${item.device.wifiRssi || '-'}dBm`}
+                          <br />
+                          <span className="text-[10px]">
+                            Heartbeat:{' '}
+                            {item.device.lastHeartbeatAt
+                              ? new Date(item.device.lastHeartbeatAt).toLocaleTimeString('id-ID')
+                              : 'Belum ada'}
+                          </span>
+                        </>
+                      ) : (
+                        'Tidak ada perangkat'
+                      )}
                     </span>
                   </div>
                   

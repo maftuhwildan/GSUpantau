@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyDeviceCredential } from '@/lib/device-auth';
+import { getDeviceHealthSettings } from '@/lib/device-health';
 import { validationError } from '@/lib/errors';
 
 export async function GET(req: NextRequest) {
@@ -16,12 +17,14 @@ export async function GET(req: NextRequest) {
     const { device, line, errorResponse } = await verifyDeviceCredential(req, device_id, line_id);
     if (errorResponse) return errorResponse;
 
+    const settings = await getDeviceHealthSettings();
+
     return NextResponse.json({
       device_id: device!.deviceCode,
       line_id: line!.lineCode,
       server_time: new Date().toISOString(),
-      heartbeat_interval_seconds: 10,
-      batch_upload_max_events: 100,
+      heartbeat_interval_seconds: settings.heartbeatIntervalSeconds,
+      batch_upload_max_events: settings.batchUploadMaxEvents,
     });
   } catch (error) {
     console.error('GET /api/device/config error:', error);

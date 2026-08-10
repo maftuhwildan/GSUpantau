@@ -5,6 +5,12 @@ import { devices } from '@/db/schema';
 import { verifyDeviceCredential } from '@/lib/device-auth';
 import { validationError } from '@/lib/errors';
 import { wsBroadcaster } from '@/lib/ws';
+import {
+  buildDeviceStatusPayload,
+  deriveEffectiveDeviceStatus,
+  getDeviceHealthSettings,
+  shouldPersistOnlineStatus,
+} from '@/lib/device-health';
 import { eq } from 'drizzle-orm';
 
 const deviceHeartbeatSchema = z.object({
@@ -32,31 +38,33 @@ export async function POST(req: NextRequest) {
     if (errorResponse) return errorResponse;
 
     const now = new Date();
+    const settings = await getDeviceHealthSettings();
+    const previousEffectiveStatus = deriveEffectiveDeviceStatus(device!, settings, now);
     const updateData: Partial<typeof devices.$inferInsert> = {
       lastHeartbeatAt: now,
-      status: 'ONLINE',
       updatedAt: now,
     };
 
+    if (shouldPersistOnlineStatus(device!.status)) updateData.status = 'ONLINE';
     if (firmware_version !== undefined) updateData.firmwareVersion = firmware_version;
     if (wifi_rssi !== undefined) updateData.wifiRssi = wifi_rssi;
     if (diagnostic_payload !== undefined) updateData.diagnosticPayload = diagnostic_payload;
 
-    await db.update(devices).set(updateData).where(eq(devices.id, device!.id));
+    const [updatedDevice] = await db
+      .update(devices)
+      .set(updateData)
+      .where(eq(devices.id, device!.id))
+      .returning();
 
-    // Broadcast device status update
-    wsBroadcaster.broadcast('device.status_updated', {
-      device_id: device!.id,
-      device_code: device!.deviceCode,
-      line_id: device!.lineId,
-      status: 'ONLINE',
-      last_heartbeat_at: now.toISOString(),
-      wifi_rssi: wifi_rssi ?? device!.wifiRssi,
-    });
+    const effectiveStatus = deriveEffectiveDeviceStatus(updatedDevice, settings, now);
+    if (effectiveStatus !== previousEffectiveStatus) {
+      wsBroadcaster.broadcast('device.status_updated', buildDeviceStatusPayload(updatedDevice, settings, now));
+    }
 
     return NextResponse.json({
       status: 'OK',
       server_time: now.toISOString(),
+      device_status: effectiveStatus,
     });
   } catch (error) {
     console.error('POST /api/device/heartbeat error:', error);

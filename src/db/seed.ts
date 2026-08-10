@@ -418,6 +418,8 @@ export async function runSeed() {
   await db.insert(schema.appSettings).values([
     { key: 'site_name', value: 'Poultry Receiving Counter System' },
     { key: 'site_timezone', value: 'Asia/Jakarta' },
+    { key: 'heartbeat_interval_seconds', value: 10 },
+    { key: 'batch_upload_max_events', value: 100 },
     { key: 'heartbeat_offline_threshold_seconds', value: 30 },
     { key: 'heartbeat_degraded_threshold_seconds', value: 15 },
   ]);

@@ -64,6 +64,7 @@ export default function OperatorDashboardPage() {
         type === 'session.cancelled' || 
         type === 'receiving.queue_updated' ||
         type === 'session.counter_updated' ||
+        type === 'device.status_updated' ||
         type === 'realtime.reconnected' ||
         type === 'realtime.poll'
       ) {
@@ -81,6 +82,20 @@ export default function OperatorDashboardPage() {
   }
 
   if (!data) return null;
+
+  const deviceStatus = data.device?.status || 'UNKNOWN';
+  const deviceStatusTone =
+    deviceStatus === 'ONLINE'
+      ? 'text-emerald-700 dark:text-emerald-400'
+      : deviceStatus === 'DEGRADED'
+      ? 'text-amber-700 dark:text-amber-400'
+      : 'text-red-700 dark:text-red-400';
+  const deviceStatusDot =
+    deviceStatus === 'ONLINE'
+      ? 'bg-emerald-500 animate-ping'
+      : deviceStatus === 'DEGRADED'
+      ? 'bg-amber-500'
+      : 'bg-red-500';
 
   return (
     <div className="space-y-6">
@@ -183,13 +198,18 @@ export default function OperatorDashboardPage() {
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Status Sensor Line</p>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className={`h-3 w-3 rounded-full ${data.device?.status === 'ONLINE' ? 'bg-emerald-500 animate-ping' : 'bg-red-500'}`} />
-                    <span className={`font-bold text-sm ${data.device?.status === 'ONLINE' ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>
-                      {data.device?.status || 'UNKNOWN'} ({data.device?.deviceCode || '-'})
+                    <span className={`h-3 w-3 rounded-full ${deviceStatusDot}`} />
+                    <span className={`font-bold text-sm ${deviceStatusTone}`}>
+                      {deviceStatus} ({data.device?.deviceCode || '-'})
                     </span>
                   </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-2">
+                <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
+                  Heartbeat terakhir:{' '}
+                  {data.device?.lastHeartbeatAt
+                    ? new Date(data.device.lastHeartbeatAt).toLocaleTimeString('id-ID')
+                    : 'Belum ada'}
+                  <br />
                   RSSI: {data.device?.wifiRssi || '-'} dBm
                 </p>
               </div>

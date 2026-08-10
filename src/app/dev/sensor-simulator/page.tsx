@@ -419,6 +419,10 @@ export default function SensorSimulatorPage() {
     );
   }
 
+  const selectedDevice = options
+    .find((line) => line.lineCode === selectedLineCode)
+    ?.devices.find((device) => device.deviceCode === selectedDeviceCode);
+
   return (
     <DashboardShell role={role} userEmail={userEmail}>
       {/* Header Page */}
@@ -568,6 +572,23 @@ export default function SensorSimulatorPage() {
                 >
                   {heartbeatStatus === "ONLINE" ? "Simulasi Offline" : "Set Online"}
                 </Button>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-1">
+                <div className="flex justify-between gap-3 text-slate-600">
+                  <span>Status server:</span>
+                  <span className="font-semibold text-slate-900">
+                    {selectedDevice?.status || 'UNKNOWN'}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-3 text-slate-600">
+                  <span>Heartbeat terakhir:</span>
+                  <span className="font-semibold text-slate-900">
+                    {selectedDevice?.lastHeartbeatAt
+                      ? new Date(selectedDevice.lastHeartbeatAt).toLocaleTimeString('id-ID')
+                      : 'Belum ada'}
+                  </span>
+                </div>
               </div>
 
               <div className="flex gap-2">

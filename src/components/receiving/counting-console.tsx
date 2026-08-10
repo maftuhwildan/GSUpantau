@@ -89,6 +89,13 @@ export function CountingConsole({
   const actual = session.actualCount;
   const difference = session.differenceCount;
   const diffPercent = session.differencePercent;
+  const deviceStatus = session.deviceStatus?.status || 'UNKNOWN';
+  const deviceStatusTone =
+    deviceStatus === 'ONLINE'
+      ? 'text-emerald-600'
+      : deviceStatus === 'DEGRADED'
+      ? 'text-amber-600'
+      : 'text-red-600';
 
   const handleFinish = async () => {
     setSubmitting(true);
@@ -313,9 +320,17 @@ export function CountingConsole({
               </div>
               <div className="flex justify-between py-1.5 border-b border-border">
                 <span className="text-muted-foreground">Status Device:</span>
-                <span className="font-semibold text-emerald-600 flex items-center gap-1">
+                <span className={`font-semibold flex items-center gap-1 ${deviceStatusTone}`}>
                   <Radio className="h-3 w-3 animate-pulse" />
-                  {session.deviceStatus?.status || 'ONLINE'}
+                  {deviceStatus}
+                </span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-border">
+                <span className="text-muted-foreground">Heartbeat Terakhir:</span>
+                <span className="font-semibold text-foreground">
+                  {session.deviceStatus?.lastHeartbeatAt
+                    ? new Date(session.deviceStatus.lastHeartbeatAt).toLocaleTimeString('id-ID')
+                    : 'Belum ada'}
                 </span>
               </div>
             </CardContent>
