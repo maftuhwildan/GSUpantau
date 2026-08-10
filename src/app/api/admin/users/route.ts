@@ -1,29 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireRole } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import { db } from '@/db';
-import * as schema from '@/db/schema';
 import { internalError } from '@/lib/errors';
 
 export async function GET(req: NextRequest) {
-  const { user, errorResponse } = await requireRole(req, 'ADMIN');
+  const { user, errorResponse } = await requirePermission(req, 'users:manage');
   if (errorResponse) {
     return errorResponse;
   }
 
   try {
-    const userList = await db
-      .select({
-        id: schema.users.id,
-        email: schema.users.email,
-        name: schema.users.name,
-        status: schema.users.status,
-        lastLoginAt: schema.users.lastLoginAt,
-        createdAt: schema.users.createdAt,
-      })
-      .from(schema.users);
+    const userRecords = await db.query.users.findMany({
+      with: {
+        userRoles: {
+          with: {
+            role: true,
+          },
+        },
+        assignedLine: true,
+      },
+      orderBy: (usersTable, { desc }) => [desc(usersTable.createdAt)],
+    });
+
+    const formattedUsers = userRecords.map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      status: u.status,
+      assignedLineId: u.assignedLineId,
+      assignedLine: u.assignedLine
+        ? {
+            id: u.assignedLine.id,
+            lineCode: u.assignedLine.lineCode,
+            name: u.assignedLine.name,
+          }
+        : null,
+      roles: u.userRoles.map((ur) => ur.role.code),
+      lastLoginAt: u.lastLoginAt,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
+    }));
 
     return NextResponse.json({
-      users: userList,
+      users: formattedUsers,
       requestedBy: user?.email,
     });
   } catch (err) {

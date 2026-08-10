@@ -84,6 +84,12 @@ export function notFoundError(
   return createErrorResponse('NOT_FOUND', message, 404);
 }
 
+export function conflictError(
+  message: string = 'Terjadi konflik data.'
+) {
+  return createErrorResponse('CONFLICT', message, 409);
+}
+
 export function internalError(
   message: string = 'Terjadi kesalahan internal pada server.'
 ) {

@@ -21,6 +21,7 @@ export interface RealtimeClient {
   roles: string[];
   assignedLineId?: string | null;
   send: (msg: WebSocketMessage) => void;
+  close?: () => void;
 }
 
 function payloadLineIds(payload: Record<string, unknown>): string[] {
@@ -73,6 +74,21 @@ class WebSocketBroadcaster {
     return () => {
       this.clients.delete(client.id);
     };
+  }
+
+  public disconnectUser(userId: string) {
+    this.clients.forEach((client, clientId) => {
+      if (client.userId === userId) {
+        if (typeof client.close === 'function') {
+          try {
+            client.close();
+          } catch (err) {
+            console.error('Error closing websocket client:', err);
+          }
+        }
+        this.clients.delete(clientId);
+      }
+    });
   }
 
   public getClientCount() {

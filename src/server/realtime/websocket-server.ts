@@ -90,6 +90,11 @@ export function attachWebSocketEndpoint(server: Server, fallbackUpgradeHandler?:
             ws.send(JSON.stringify(msg));
           }
         },
+        close: () => {
+          if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+            ws.close(1008, 'User status or authorization changed');
+          }
+        },
       });
 
       ws.on('pong', () => {
