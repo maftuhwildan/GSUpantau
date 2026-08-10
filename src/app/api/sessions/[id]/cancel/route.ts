@@ -117,6 +117,12 @@ export async function POST(
           entityType: 'receiving_sessions',
           entityId: session.id,
           reason,
+          beforeData: {
+            status: session.status,
+            cancelledAt: session.cancelledAt,
+            cancelledBy: session.cancelledBy,
+            cancellationReason: session.cancellationReason,
+          },
           afterData: cancSession,
         },
         tx

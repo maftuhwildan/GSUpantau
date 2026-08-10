@@ -36,6 +36,13 @@
       "when": 1786195000000,
       "tag": "0004_auth_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786338523879,
+      "tag": "0005_device_api_hardening",
+      "breakpoints": true
     }
   ]
 }

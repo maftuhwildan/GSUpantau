@@ -4,7 +4,7 @@ import { receivings, receivingSessions, sensorEvents } from '@/db/schema';
 import { requirePermission } from '@/lib/auth';
 import { internalError } from '@/lib/errors';
 import { getDateRangeFromStrings } from '@/lib/time';
-import { eq, and, sql, desc, gte, lte } from 'drizzle-orm';
+import { eq, and, sql, desc, gte, lt, lte } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
   const { errorResponse } = await requirePermission(req, 'reports:view');
@@ -84,9 +84,9 @@ export async function GET(req: NextRequest) {
       eq(sensorEvents.eventMode, 'PRODUCTION'),
     ];
 
-    const { start, end } = getDateRangeFromStrings(dateFrom, dateTo);
+    const { start, endExclusive } = getDateRangeFromStrings(dateFrom, dateTo);
     if (start) detectionsConditions.push(gte(sensorEvents.receivedAt, start));
-    if (end) detectionsConditions.push(lte(sensorEvents.receivedAt, end));
+    if (endExclusive) detectionsConditions.push(lt(sensorEvents.receivedAt, endExclusive));
     if (lineId) detectionsConditions.push(eq(sensorEvents.lineId, lineId));
 
     const detectionsStats = await db

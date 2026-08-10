@@ -3,8 +3,8 @@ import { db } from '@/db';
 import { receivings, lines, devices, receivingSessions, sensorEvents, users, auditLogs } from '@/db/schema';
 import { requireRole } from '@/lib/auth';
 import { internalError } from '@/lib/errors';
-import { getStartOfTodayInSiteTimezone, getTodayStringInSiteTimezone } from '@/lib/time';
-import { eq, and, sql, desc, gte, inArray, ne } from 'drizzle-orm';
+import { getStartOfTodayInSiteTimezone, getStartOfTomorrowInSiteTimezone, getTodayStringInSiteTimezone } from '@/lib/time';
+import { eq, and, sql, desc, gte, lt, inArray } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
   const { errorResponse } = await requireRole(req, 'ADMIN');
@@ -13,9 +13,10 @@ export async function GET(req: NextRequest) {
   try {
     const stringToday = getTodayStringInSiteTimezone();
     const startOfToday = getStartOfTodayInSiteTimezone();
+    const startOfTomorrow = getStartOfTomorrowInSiteTimezone();
 
     // 1. Receivings today
-    const receivingsToday = await db.select().from(receivings).where(gte(receivings.receivingDate, stringToday));
+    const receivingsToday = await db.select().from(receivings).where(eq(receivings.receivingDate, stringToday));
     
     let totalManifestToday = 0;
     let actualCompletedToday = 0;
@@ -123,7 +124,8 @@ export async function GET(req: NextRequest) {
           eq(sensorEvents.eventType, 'DETECTION'),
           eq(sensorEvents.eventMode, 'PRODUCTION'),
           eq(sensorEvents.assignmentStatus, 'UNASSIGNED'),
-          gte(sensorEvents.receivedAt, startOfToday)
+          gte(sensorEvents.receivedAt, startOfToday),
+          lt(sensorEvents.receivedAt, startOfTomorrow)
         )
       );
     const unassignedDetectionsToday = unassignedRes[0]?.count || 0;

@@ -1,9 +1,8 @@
 import React from "react";
-import { DashboardShell } from "@/components/layout/DashboardShell";
 import { getAuthSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
-export default async function AdminLayout({
+export default async function DevLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -18,9 +17,5 @@ export default async function AdminLayout({
     redirect("/dashboard");
   }
 
-  return (
-    <DashboardShell role="ADMIN" userEmail={user.email}>
-      {children}
-    </DashboardShell>
-  );
+  return children;
 }

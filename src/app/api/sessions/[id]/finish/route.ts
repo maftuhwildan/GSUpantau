@@ -165,6 +165,11 @@ export async function POST(
             action: 'SESSION_FINISH',
             entityType: 'receiving_sessions',
             entityId: session.id,
+            beforeData: {
+              status: session.status,
+              finishedAt: session.finishedAt,
+              finishedBy: session.finishedBy,
+            },
             afterData: {
               status: 'COMPLETED',
               actualCount: derivedActual,

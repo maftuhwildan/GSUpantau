@@ -406,6 +406,23 @@ describe('Batch 10: Actual Count, Dashboard, and Report Correctness', () => {
   it('should exclude CANCELLED receivings from Admin Dashboard totalManifestToday and include reviewRequiredCount', async () => {
     const todayStr = getTodayStringInSiteTimezone();
 
+    const [year, month, day] = todayStr.split('-').map(Number);
+    const futureDate = new Date(Date.UTC(year, month - 1, day + 1))
+      .toISOString()
+      .slice(0, 10);
+    await db.insert(receivings).values({
+      receivingNumber: `ADM-FUTURE-${Date.now()}`,
+      deliveryNoteNumber: `SJ-ADM-FUTURE-${Date.now()}`,
+      receivingDate: futureDate,
+      manifestCount: 8888,
+      lineId: testLine1Id,
+      status: 'WAITING',
+      licensePlateSnapshot: 'B 8888 FUT',
+      driverNameSnapshot: 'Future Driver',
+      supplierNameSnapshot: 'Future Supplier',
+      createdBy: adminUserId,
+    });
+
     // Create a CANCELLED receiving for today with 9999 manifest count
     await db.insert(receivings).values({
       receivingNumber: `ADM-CAN-${Date.now()}`,

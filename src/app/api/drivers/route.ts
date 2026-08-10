@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { drivers } from '@/db/schema';
-import { requireAuth } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import { internalError } from '@/lib/errors';
 import { eq } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
-  const { errorResponse } = await requireAuth(req);
+  const { errorResponse } = await requirePermission(req, 'master_data:manage');
   if (errorResponse) return errorResponse;
 
   try {

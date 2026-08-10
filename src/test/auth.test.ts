@@ -32,6 +32,10 @@ import { POST as startSessionHandler } from '../app/api/sessions/start/route';
 import { GET as sensorEventsHandler } from '../app/api/sensor-events/route';
 import { GET as getReceivingsHandler } from '../app/api/receivings/route';
 import { GET as getReceivingDetailHandler } from '../app/api/receivings/[id]/route';
+import { GET as linesHandler } from '../app/api/lines/route';
+import { GET as trucksHandler } from '../app/api/trucks/route';
+import { GET as driversHandler } from '../app/api/drivers/route';
+import { GET as suppliersHandler } from '../app/api/suppliers/route';
 
 describe('Auth, Permissions & Security Hardening (Batch 11)', () => {
   let adminUserId: string;
@@ -463,6 +467,35 @@ describe('Auth, Permissions & Security Hardening (Batch 11)', () => {
       const res3 = await devSimulatorOptionsHandler(req3);
       expect(res3.status).toBe(200);
     });
+
+    it('should deny users without any current DB role from protected reference APIs', async () => {
+      const [rolelessUser] = await db
+        .insert(schema.users)
+        .values({
+          email: `roleless-${Date.now()}@local.test`,
+          name: 'Roleless User',
+          passwordHash: 'hash',
+          status: 'ACTIVE',
+        })
+        .returning();
+      const token = await signSessionToken({
+        userId: rolelessUser.id,
+        email: rolelessUser.email,
+        name: rolelessUser.name,
+        roles: ['ADMIN'],
+        expiresAt: Date.now() + 3600 * 1000,
+      });
+      const cookie = { cookie: `${SESSION_COOKIE_NAME}=${token}` };
+
+      const responses = await Promise.all([
+        linesHandler(new NextRequest('http://localhost:3000/api/lines', { headers: cookie })),
+        trucksHandler(new NextRequest('http://localhost:3000/api/trucks', { headers: cookie })),
+        driversHandler(new NextRequest('http://localhost:3000/api/drivers', { headers: cookie })),
+        suppliersHandler(new NextRequest('http://localhost:3000/api/suppliers', { headers: cookie })),
+      ]);
+
+      expect(responses.map((response) => response.status)).toEqual([403, 403, 403, 403]);
+    });
   });
 
   // ─── Operator Line Restrictions ───────────────────────────────────────────
@@ -523,6 +556,27 @@ describe('Auth, Permissions & Security Hardening (Batch 11)', () => {
       });
       const res = await operatorDashboardHandler(req);
       expect(res.status).toBe(200);
+    });
+
+    it('GET /api/lines returns only the Operator assigned line', async () => {
+      const req = new NextRequest('http://localhost:3000/api/lines', {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${operatorToken}` },
+      });
+      const res = await linesHandler(req);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.lines).toHaveLength(1);
+      expect(json.lines[0].id).toBe(line1Id);
+    });
+
+    it('Operator cannot enumerate Admin master-data APIs', async () => {
+      const headers = { cookie: `${SESSION_COOKIE_NAME}=${operatorToken}` };
+      const responses = await Promise.all([
+        trucksHandler(new NextRequest('http://localhost:3000/api/trucks', { headers })),
+        driversHandler(new NextRequest('http://localhost:3000/api/drivers', { headers })),
+        suppliersHandler(new NextRequest('http://localhost:3000/api/suppliers', { headers })),
+      ]);
+      expect(responses.map((response) => response.status)).toEqual([403, 403, 403]);
     });
 
     it('should block OPERATOR from accessing an unassigned line (LINE-02) dashboard with 403', async () => {

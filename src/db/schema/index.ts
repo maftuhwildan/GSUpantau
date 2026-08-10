@@ -8,6 +8,7 @@ import {
   timestamp,
   jsonb,
   uniqueIndex,
+  check,
 } from 'drizzle-orm/pg-core';
 import { sql, relations } from 'drizzle-orm';
 
@@ -182,6 +183,7 @@ export const sensorEvents = pgTable('sensor_events', {
     table.bootId,
     table.sequence
   ),
+  sensorEventsSequenceNonNegative: check('sensor_events_sequence_non_negative', sql`${table.sequence} >= 0`),
 }));
 
 // 13. Reconciliation Reviews

@@ -3,8 +3,8 @@ import { db } from '@/db';
 import { lines, devices, receivingSessions, receivings, sensorEvents } from '@/db/schema';
 import { requirePermission } from '@/lib/auth';
 import { forbiddenError, internalError } from '@/lib/errors';
-import { getStartOfTodayInSiteTimezone } from '@/lib/time';
-import { eq, and, sql, desc, gte, asc, or, isNull } from 'drizzle-orm';
+import { getStartOfTodayInSiteTimezone, getStartOfTomorrowInSiteTimezone } from '@/lib/time';
+import { eq, and, sql, desc, gte, lt, asc, or, isNull } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
   const { user, errorResponse } = await requirePermission(req, 'dashboard:view');
@@ -93,6 +93,7 @@ export async function GET(req: NextRequest) {
       .limit(5);
 
     const startOfToday = getStartOfTodayInSiteTimezone();
+    const startOfTomorrow = getStartOfTomorrowInSiteTimezone();
 
     // Scope detection statistics to the selected line and filter by receivedAt & SITE_TIMEZONE
     const detectionsStats = await db
@@ -106,7 +107,8 @@ export async function GET(req: NextRequest) {
           eq(sensorEvents.lineId, lineId),
           eq(sensorEvents.eventType, 'DETECTION'),
           eq(sensorEvents.eventMode, 'PRODUCTION'),
-          gte(sensorEvents.receivedAt, startOfToday)
+          gte(sensorEvents.receivedAt, startOfToday),
+          lt(sensorEvents.receivedAt, startOfTomorrow)
         )
       )
       .groupBy(sensorEvents.assignmentStatus);

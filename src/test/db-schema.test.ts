@@ -197,6 +197,21 @@ describe('Database Schema Invariants', () => {
 
     expect(evtAfterRestart.sequence).toBe(testSeq);
 
+    await expect(
+      db.insert(schema.sensorEvents).values({
+        eventId: `${testEventId}-negative-sequence`,
+        bootId: `${testBootId}-negative-sequence`,
+        deviceId: device.id,
+        lineId: line.id,
+        sequence: -1,
+        eventType: 'DETECTION',
+        deviceTime: new Date(),
+        assignmentStatus: 'UNASSIGNED',
+        eventMode: 'PRODUCTION',
+        rawPayload: { test: true },
+      })
+    ).rejects.toThrow(/sensor_events_sequence_non_negative|check constraint/i);
+
     // Clean up
     await db.delete(schema.sensorEvents).where(eq(schema.sensorEvents.id, evt1.id));
     await db.delete(schema.sensorEvents).where(eq(schema.sensorEvents.id, evtAfterRestart.id));

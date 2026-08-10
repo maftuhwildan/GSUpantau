@@ -3,31 +3,94 @@ import { z } from 'zod';
 import { db } from '@/db';
 import { sensorEvents, receivingSessions, devices } from '@/db/schema';
 import { verifyDeviceCredential } from '@/lib/device-auth';
-import { validationError } from '@/lib/errors';
+import { internalError, validationError } from '@/lib/errors';
 import { lockCountingLine } from '@/lib/counting-lock';
 import { wsBroadcaster } from '@/lib/ws';
-import { eq, and, or, sql } from 'drizzle-orm';
+import { eq, and, or, sql, desc } from 'drizzle-orm';
+
+const ISO_8601_WITH_TIMEZONE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+const MAX_SEQUENCE = 2147483647;
+const MAX_UPLOAD_EVENTS = 100;
+const BOOT_CHANGE_DIAGNOSTIC_WINDOW_MS = 5 * 60 * 1000;
+
+function parseDeviceTime(value: string): Date | null {
+  const match = ISO_8601_WITH_TIMEZONE.exec(value);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const millisecond = Number(`0.${match[7] || '0'}`) * 1000;
+  const offsetHour = match[8] === 'Z' ? 0 : Number(match[10]);
+  const offsetMinute = match[8] === 'Z' ? 0 : Number(match[11]);
+
+  const calendarCheck = new Date(Date.UTC(year, month - 1, day));
+  const validCalendarDate =
+    calendarCheck.getUTCFullYear() === year &&
+    calendarCheck.getUTCMonth() === month - 1 &&
+    calendarCheck.getUTCDate() === day;
+  const validClock = hour <= 23 && minute <= 59 && second <= 59;
+  const validOffset =
+    offsetMinute <= 59 &&
+    offsetHour <= 14 &&
+    (offsetHour < 14 || offsetMinute === 0);
+
+  if (!validCalendarDate || !validClock || !validOffset) return null;
+
+  const signedOffsetMinutes =
+    match[8] === 'Z'
+      ? 0
+      : (match[9] === '+' ? 1 : -1) * (offsetHour * 60 + offsetMinute);
+  const instant = Date.UTC(year, month - 1, day, hour, minute, second, millisecond)
+    - signedOffsetMinutes * 60 * 1000;
+  const parsed = new Date(instant);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
 
 const eventItemSchema = z.object({
-  event_id: z.string().min(1, { message: 'event_id wajib diisi' }),
+  event_id: z
+    .string()
+    .min(1, { message: 'event_id wajib diisi' })
+    .max(100, { message: 'event_id maksimal 100 karakter' }),
   boot_id: z.string().min(1, { message: 'boot_id wajib diisi' }).max(100, { message: 'boot_id maksimal 100 karakter' }),
-  sequence: z.number().int({ message: 'sequence harus berupa angka bulat' }),
+  sequence: z
+    .number()
+    .int({ message: 'sequence harus berupa angka bulat' })
+    .min(0, { message: 'sequence tidak boleh negatif' })
+    .max(MAX_SEQUENCE, { message: 'sequence melebihi batas maksimum' }),
   event_type: z.enum(['DETECTION', 'HEARTBEAT', 'DEVICE_RESTART'], {
     errorMap: () => ({ message: 'event_type harus DETECTION, HEARTBEAT, atau DEVICE_RESTART' }),
   }),
-  device_time: z.string().min(1, { message: 'device_time wajib diisi' }),
+  device_time: z
+    .string()
+    .min(1, { message: 'device_time wajib diisi' })
+    .refine((value) => parseDeviceTime(value) !== null, {
+      message: 'device_time harus ISO-8601 valid dengan timezone',
+    }),
   event_mode: z.enum(['PRODUCTION', 'TEST', 'MAINTENANCE']).optional().default('PRODUCTION'),
-});
+}).passthrough();
 
 const deviceEventsSchema = z.object({
   device_id: z.string().min(1, { message: 'device_id wajib diisi' }),
   line_id: z.string().min(1, { message: 'line_id wajib diisi' }),
-  events: z.array(eventItemSchema).min(1, { message: 'events tidak boleh kosong' }),
+  events: z
+    .array(eventItemSchema)
+    .min(1, { message: 'events tidak boleh kosong' })
+    .max(MAX_UPLOAD_EVENTS, { message: 'Maksimal 100 event per upload' }),
 });
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return validationError('Payload JSON tidak valid');
+    }
+
     const parsed = deviceEventsSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -36,6 +99,8 @@ export async function POST(req: NextRequest) {
     }
 
     const { device_id, line_id, events } = parsed.data;
+    const rawEvents = (body as { events: Array<Record<string, unknown>> }).events;
+    const bootIds = new Set(events.map((evt) => evt.boot_id));
 
     // Verify Device Auth & Line match
     const { device, line, errorResponse } = await verifyDeviceCredential(req, device_id, line_id);
@@ -59,6 +124,28 @@ export async function POST(req: NextRequest) {
           )
         );
 
+      let bootChangeDiagnostic: { previousBootId: string; incomingBootId: string; ageMs: number } | null = null;
+      if (bootIds.size === 1) {
+        const incomingBootId = events[0].boot_id;
+        const [latestDeviceEvent] = await tx
+          .select({ bootId: sensorEvents.bootId, receivedAt: sensorEvents.receivedAt })
+          .from(sensorEvents)
+          .where(eq(sensorEvents.deviceId, device!.id))
+          .orderBy(desc(sensorEvents.receivedAt))
+          .limit(1);
+
+        if (latestDeviceEvent && latestDeviceEvent.bootId !== incomingBootId) {
+          const ageMs = Date.now() - latestDeviceEvent.receivedAt.getTime();
+          if (ageMs >= 0 && ageMs <= BOOT_CHANGE_DIAGNOSTIC_WINDOW_MS) {
+            bootChangeDiagnostic = {
+              previousBootId: latestDeviceEvent.bootId,
+              incomingBootId,
+              ageMs,
+            };
+          }
+        }
+      }
+
       let acceptedCount = 0;
       let duplicateCount = 0;
       let hasAssignedDetection = false;
@@ -72,7 +159,7 @@ export async function POST(req: NextRequest) {
       }> = [];
       const sensorBroadcasts: Array<Record<string, unknown>> = [];
 
-      for (const evt of events) {
+      for (const [eventIndex, evt] of events.entries()) {
         // A retry is duplicate when either event_id or the sequence inside the
         // same device boot has already been accepted. A new boot may safely
         // restart sequence numbering from zero.
@@ -112,8 +199,10 @@ export async function POST(req: NextRequest) {
           assignedSessionId = activeSession.id;
         }
 
-        const deviceTimeDate = new Date(evt.device_time);
-        const validDeviceTime = isNaN(deviceTimeDate.getTime()) ? new Date() : deviceTimeDate;
+        const deviceTimeDate = parseDeviceTime(evt.device_time);
+        if (!deviceTimeDate) {
+          throw new Error('device_time tidak valid setelah validasi');
+        }
 
         // Insert sensor event
         const [insertedEvent] = await tx
@@ -125,12 +214,12 @@ export async function POST(req: NextRequest) {
             lineId: line!.id,
             sequence: evt.sequence,
             eventType: evt.event_type,
-            deviceTime: validDeviceTime,
+            deviceTime: deviceTimeDate,
             receivedAt: new Date(),
             sessionId: assignedSessionId,
             assignmentStatus,
             eventMode: evt.event_mode,
-            rawPayload: evt as unknown as Record<string, unknown>,
+            rawPayload: rawEvents[eventIndex],
           })
           .onConflictDoNothing()
           .returning();
@@ -224,8 +313,27 @@ export async function POST(req: NextRequest) {
         eventResults,
         sensorBroadcasts,
         counterBroadcast,
+        bootChangeDiagnostic,
       };
     });
+
+    if (bootIds.size > 1) {
+      console.warn('Device upload contains multiple boot_id values', {
+        device_id,
+        line_id,
+        boot_count: bootIds.size,
+      });
+    }
+    if (ingestionResult.bootChangeDiagnostic) {
+      console.warn('Device boot_id changed within diagnostic window', {
+        device_id,
+        line_id,
+        previous_boot_id: ingestionResult.bootChangeDiagnostic.previousBootId,
+        incoming_boot_id: ingestionResult.bootChangeDiagnostic.incomingBootId,
+        age_ms: ingestionResult.bootChangeDiagnostic.ageMs,
+        window_ms: BOOT_CHANGE_DIAGNOSTIC_WINDOW_MS,
+      });
+    }
 
     for (const payload of ingestionResult.sensorBroadcasts) {
       wsBroadcaster.broadcast('sensor.event_received', payload);
@@ -242,6 +350,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('POST /api/device/events error:', error);
-    return validationError('Terjadi kesalahan saat memproses event perangkat');
+    return internalError('Terjadi kesalahan saat menyimpan event perangkat');
   }
 }

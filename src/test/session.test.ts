@@ -292,6 +292,8 @@ describe('Session Start & Finish (Batch 5)', () => {
 
       const finishLog = logs.find((l) => l.action === 'SESSION_FINISH');
       expect(finishLog).toBeDefined();
+      expect(finishLog?.beforeData).toMatchObject({ status: 'COUNTING' });
+      expect(finishLog?.afterData).toMatchObject({ status: 'COMPLETED' });
     });
   });
 
@@ -359,6 +361,14 @@ describe('Session Start & Finish (Batch 5)', () => {
           .where(eq(receivings.id, targetRec.id));
 
         expect(revertedRec.status).toBe('WAITING');
+
+        const cancelLog = (await db
+          .select()
+          .from(auditLogs)
+          .where(eq(auditLogs.entityId, sessionId)))
+          .find((log) => log.action === 'SESSION_CANCEL');
+        expect(cancelLog?.beforeData).toMatchObject({ status: 'COUNTING' });
+        expect(cancelLog?.afterData).toMatchObject({ status: 'CANCELLED' });
       }
     });
   });
