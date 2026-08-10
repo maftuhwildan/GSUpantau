@@ -20,6 +20,7 @@ import { POST as eventsHandler } from '../app/api/device/events/route';
 import { GET as operatorDashboardHandler } from '../app/api/dashboard/operator/route';
 import { GET as adminDashboardHandler } from '../app/api/dashboard/admin/route';
 import { GET as linesHandler } from '../app/api/lines/route';
+import { GET as activeSessionHandler } from '../app/api/lines/[id]/active-session/route';
 import { eq } from 'drizzle-orm';
 
 describe('Batch 15: Device Health and Offline Detection', () => {
@@ -275,6 +276,53 @@ describe('Batch 15: Device Health and Offline Detection', () => {
     expect(lineOverview.device.status).toBe('OFFLINE');
     expect(new Date(lineOverview.device.lastHeartbeatAt).getTime()).toBe(staleHeartbeat.getTime());
     expect(JSON.stringify(adminJson)).not.toContain('credentialHash');
+  });
+
+  it('uses an online device for line health when another device is in maintenance', async () => {
+    await db.update(devices).set({ status: 'MAINTENANCE' }).where(eq(devices.id, device1.id));
+    const [onlineDevice] = await db
+      .insert(devices)
+      .values({
+        deviceCode: 'ESP32-S3-LINE-01-TEST',
+        lineId: line1.id,
+        name: 'ESP32-S3 Test Line 1',
+        credentialHash: 'unused-test-credential-hash',
+        status: 'ONLINE',
+        lastHeartbeatAt: new Date(),
+      })
+      .returning();
+
+    const operatorRes = await operatorDashboardHandler(
+      new NextRequest('http://localhost:3000/api/dashboard/operator', {
+        headers: { cookie: operatorCookie },
+      })
+    );
+    expect(operatorRes.status).toBe(200);
+    const operatorJson = await operatorRes.json();
+    expect(operatorJson.device).toMatchObject({ id: onlineDevice.id, status: 'ONLINE' });
+
+    const adminRes = await adminDashboardHandler(
+      new NextRequest('http://localhost:3000/api/dashboard/admin', {
+        headers: { cookie: adminCookie },
+      })
+    );
+    expect(adminRes.status).toBe(200);
+    const adminJson = await adminRes.json();
+    const lineOverview = adminJson.linesOverview.find((item: any) => item.line.id === line1.id);
+    expect(lineOverview.device).toMatchObject({ id: onlineDevice.id, status: 'ONLINE' });
+
+    const activeSessionRes = await activeSessionHandler(
+      new NextRequest(`http://localhost:3000/api/lines/${line1.id}/active-session`, {
+        headers: { cookie: adminCookie },
+      }),
+      { params: Promise.resolve({ id: line1.id }) }
+    );
+    expect(activeSessionRes.status).toBe(200);
+    const activeSessionJson = await activeSessionRes.json();
+    expect(activeSessionJson.activeSession.deviceStatus).toMatchObject({
+      id: onlineDevice.id,
+      status: 'ONLINE',
+    });
   });
 
   it('returns current device health from lines API without credentials and scopes Operators', async () => {

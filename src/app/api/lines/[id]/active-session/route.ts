@@ -3,7 +3,7 @@ import { db } from '@/db';
 import { receivingSessions, receivings, sensorEvents, devices, lines } from '@/db/schema';
 import { requirePermission } from '@/lib/auth';
 import { createErrorResponse, forbiddenError, notFoundError } from '@/lib/errors';
-import { getDeviceHealthSettings, withEffectiveDeviceStatus } from '@/lib/device-health';
+import { getDeviceHealthSettings, selectLineHealthDevice } from '@/lib/device-health';
 import { eq, and, desc, count } from 'drizzle-orm';
 
 export async function GET(
@@ -54,13 +54,13 @@ export async function GET(
       .from(receivings)
       .where(eq(receivings.id, activeSession.receivingId));
 
-    // Fetch device on this line
-    const [deviceRecord] = await db
+    // Select the healthiest operational device when a line has multiple devices.
+    const deviceRecords = await db
       .select()
       .from(devices)
       .where(eq(devices.lineId, lineId));
     const settings = await getDeviceHealthSettings();
-    const device = deviceRecord ? withEffectiveDeviceStatus(deviceRecord, settings) : null;
+    const device = selectLineHealthDevice(deviceRecords, settings);
 
     // Derived actual count
     const [cntResult] = await db

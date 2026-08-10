@@ -3,7 +3,7 @@ import { db } from '@/db';
 import { receivings, lines, devices, receivingSessions, sensorEvents, users, auditLogs } from '@/db/schema';
 import { requireRole } from '@/lib/auth';
 import { internalError } from '@/lib/errors';
-import { getDeviceHealthSettings, toPublicDeviceHealth } from '@/lib/device-health';
+import { getDeviceHealthSettings, selectPublicLineDeviceHealth } from '@/lib/device-health';
 import { getStartOfTodayInSiteTimezone, getStartOfTomorrowInSiteTimezone, getTodayStringInSiteTimezone } from '@/lib/time';
 import { eq, and, sql, desc, gte, lt, inArray } from 'drizzle-orm';
 
@@ -110,10 +110,9 @@ export async function GET(req: NextRequest) {
           actualCount = actualRes[0]?.count || 0;
         }
         const { devices: lineDevices, ...safeLine } = line;
-        const firstDevice = lineDevices[0] || null;
         return {
           line: safeLine,
-          device: firstDevice ? toPublicDeviceHealth(firstDevice, settings) : null,
+          device: selectPublicLineDeviceHealth(lineDevices, settings),
           activeSession: session ? { ...session, actualCount } : null,
         };
       })

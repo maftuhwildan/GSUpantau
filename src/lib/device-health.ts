@@ -112,6 +112,41 @@ export function withEffectiveDeviceStatus<TDevice extends DeviceHealthInput>(
   };
 }
 
+const LINE_DEVICE_STATUS_PRIORITY: Record<DeviceEffectiveStatus, number> = {
+  ONLINE: 0,
+  DEGRADED: 1,
+  OFFLINE: 2,
+  UNREGISTERED: 3,
+  MAINTENANCE: 4,
+};
+
+export function selectLineHealthDevice(
+  deviceRecords: readonly (typeof devices.$inferSelect)[],
+  settings: Pick<DeviceHealthSettings, 'degradedThresholdSeconds' | 'offlineThresholdSeconds'>,
+  now: Date = new Date()
+) {
+  const effectiveDevices = deviceRecords.map((device) =>
+    withEffectiveDeviceStatus(device, settings, now)
+  );
+
+  return effectiveDevices.reduce<(typeof effectiveDevices)[number] | null>((selected, candidate) => {
+    if (!selected) return candidate;
+
+    const priorityDifference =
+      LINE_DEVICE_STATUS_PRIORITY[candidate.status] -
+      LINE_DEVICE_STATUS_PRIORITY[selected.status];
+    if (priorityDifference < 0) return candidate;
+    if (priorityDifference > 0) return selected;
+
+    const candidateHeartbeat = candidate.lastHeartbeatAt?.getTime() ?? Number.NEGATIVE_INFINITY;
+    const selectedHeartbeat = selected.lastHeartbeatAt?.getTime() ?? Number.NEGATIVE_INFINITY;
+    if (candidateHeartbeat > selectedHeartbeat) return candidate;
+    if (candidateHeartbeat < selectedHeartbeat) return selected;
+
+    return candidate.deviceCode.localeCompare(selected.deviceCode) < 0 ? candidate : selected;
+  }, null);
+}
+
 export function toPublicDeviceHealth(
   device: typeof devices.$inferSelect,
   settings: Pick<DeviceHealthSettings, 'degradedThresholdSeconds' | 'offlineThresholdSeconds'>,
@@ -128,6 +163,27 @@ export function toPublicDeviceHealth(
     lastHeartbeatAt: effectiveDevice.lastHeartbeatAt,
     firmwareVersion: effectiveDevice.firmwareVersion,
     wifiRssi: effectiveDevice.wifiRssi,
+  };
+}
+
+export function selectPublicLineDeviceHealth(
+  deviceRecords: readonly (typeof devices.$inferSelect)[],
+  settings: Pick<DeviceHealthSettings, 'degradedThresholdSeconds' | 'offlineThresholdSeconds'>,
+  now: Date = new Date()
+) {
+  const device = selectLineHealthDevice(deviceRecords, settings, now);
+  if (!device) return null;
+
+  return {
+    id: device.id,
+    deviceCode: device.deviceCode,
+    lineId: device.lineId,
+    name: device.name,
+    status: device.status,
+    storedStatus: device.storedStatus,
+    lastHeartbeatAt: device.lastHeartbeatAt,
+    firmwareVersion: device.firmwareVersion,
+    wifiRssi: device.wifiRssi,
   };
 }
 

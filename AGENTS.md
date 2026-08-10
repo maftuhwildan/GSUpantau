@@ -1,6 +1,6 @@
 # Agent Instructions
 
-This repository contains the blueprint and future implementation for the Poultry Receiving Counter System.
+This repository contains the active implementation of the Poultry Receiving Counter System.
 
 Before making code changes, every AI agent must read these files in order:
 
@@ -11,6 +11,7 @@ Before making code changes, every AI agent must read these files in order:
 5. `docs/API_CONTRACT.md`
 6. `docs/IMPLEMENTATION_TASKS.md`
 7. `docs/DEPLOYMENT.md`
+8. `docs/PROJECT_STATUS.md`
 
 ## Product Rules
 

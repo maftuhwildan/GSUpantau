@@ -4,7 +4,10 @@ Sistem Penghitung Penerimaan Ayam Rumah Potong Ayam (RPA) berbasis Next.js App R
 
 Dokumentasi integrasi perangkat dan pilot:
 
+- [Status Proyek dan Handoff Agent](docs/PROJECT_STATUS.md)
 - [Kontrak Firmware ESP32](docs/ESP32_PROTOCOL.md)
+- [Simulator ESP32-S3 Tanpa Sensor](firmware/esp32-s3-simulator/README.md)
+- [Lembar Hasil Simulasi ESP32](docs/ESP32_SIMULATION_RESULTS.md)
 - [Lembar Hasil Field Test ESP32](docs/ESP32_FIELD_TEST_RESULTS.md)
 
 ## Fitur Batch 1 (UI Foundation & Scaffold)

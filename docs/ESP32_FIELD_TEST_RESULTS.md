@@ -6,6 +6,8 @@ Status keseluruhan: **BELUM DIUJI**
 
 Tidak ada hasil yang boleh ditandai LULUS tanpa perangkat fisik, bukti request/response, dan pembanding counter manual.
 
+Pengujian ESP32 tanpa sensor dicatat terpisah di [ESP32_SIMULATION_RESULTS.md](./ESP32_SIMULATION_RESULTS.md). Status `LULUS SIMULASI` tidak mengubah hasil atau keputusan field test fisik dalam dokumen ini.
+
 ## Identitas Pelaksanaan
 
 | Data | Nilai |

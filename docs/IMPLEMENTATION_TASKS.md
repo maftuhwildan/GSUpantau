@@ -676,6 +676,11 @@ npm run build
 
 ## Batch 21: ESP32 Protocol and Pilot Readiness
 
+Implementation status: **SELESAI (SOFTWARE)**. Kontrak backend, dokumentasi protocol,
+checklist pilot, dan firmware simulator ESP32-S3 tanpa sensor telah tersedia. Status ini
+tidak menyatakan field test sensor fisik lulus; lihat `docs/PROJECT_STATUS.md` dan
+`docs/ESP32_FIELD_TEST_RESULTS.md`.
+
 Goal: finalize the firmware contract and field-test checklist without changing backend counting rules again.
 
 Tasks:
