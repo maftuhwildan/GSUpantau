@@ -41,6 +41,7 @@ Salin `.env.example` menjadi `.env`, lalu isi `DATABASE_URL` menggunakan hostnam
 
 ```env
 DATABASE_URL=postgres://poultry_dev:PASSWORD@NAMA-VPS-TAILSCALE:5432/poultry_receiving_dev
+DATABASE_TEST_URL=postgres://poultry_dev:PASSWORD@NAMA-VPS-TAILSCALE:5432/poultry_receiving_test
 SESSION_SECRET=ganti-dengan-secret-minimal-32-karakter
 APP_URL=http://localhost:3000
 SITE_TIMEZONE=Asia/Jakarta
@@ -75,7 +76,7 @@ Jalankan seed hanya pada database development khusus jika memang diperlukan:
 npm run db:seed
 ```
 
-Jangan menjalankan seed atau automated test dengan `DATABASE_URL` production.
+Jangan menjalankan seed atau automated test dengan `DATABASE_URL` production. Pengujian integrasi PostgreSQL menggunakan `DATABASE_TEST_URL` yang dilindungi oleh safety guard database ending with `_test`.
 
 ### 4. Jalankan Mode Pengembang
 
@@ -88,13 +89,16 @@ Aplikasi akan berjalan pada [http://localhost:3000](http://localhost:3000).
 ### 5. Perintah Validasi
 
 ```bash
+# Pengujian Integrasi Real PostgreSQL (Batch 20)
+npm run test:pg
+
 # Validasi Linter
 npm run lint
 
 # Validasi Tipe Data TypeScript
 npm run typecheck
 
-# Jalankan test
+# Jalankan test PGlite
 npm test
 
 # Build Produksi Next.js

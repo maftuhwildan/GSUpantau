@@ -1,6 +1,7 @@
-import { db } from './index';
+import { db, connectionString, isPgLite } from './index';
 import * as schema from './schema';
 import { runMigrations } from './migrate';
+import { assertTestDatabase } from './guard';
 import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 import * as dotenv from 'dotenv';
@@ -8,6 +9,10 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 export async function runSeed() {
+  if (!isPgLite) {
+    assertTestDatabase(connectionString);
+  }
+
   console.log('Ensuring migrations are applied before seeding...');
   await runMigrations();
 

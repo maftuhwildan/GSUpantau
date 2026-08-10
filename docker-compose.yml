@@ -2,16 +2,17 @@ services:
   postgres:
     image: postgres:16
     container_name: poultry_receiving_db
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: poultry
-      POSTGRES_PASSWORD: poultry
-      POSTGRES_DB: poultry_receiving
+      POSTGRES_USER: ${POSTGRES_USER:-poultry}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-poultry}
+      POSTGRES_DB: ${POSTGRES_DB:-poultry_receiving}
     ports:
-      - "5432:5432"
+      - "${TAILSCALE_IP:-127.0.0.1}:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U poultry -d poultry_receiving"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-poultry} -d $${POSTGRES_DB:-poultry_receiving}"]
       interval: 10s
       timeout: 5s
       retries: 5

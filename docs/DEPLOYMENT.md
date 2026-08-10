@@ -32,7 +32,8 @@ Developer laptop
 Recommended local `.env`:
 
 ```env
-DATABASE_URL=postgres://poultry_dev:strong-development-password@your-vps-tailnet-name:5432/poultry_receiving_dev
+DATABASE_URL=postgres://poultry:poultry@your-vps-tailnet-name:5432/poultry_receiving
+DATABASE_TEST_URL=postgres://poultry:poultry@your-vps-tailnet-name:5432/poultry_receiving_test
 SESSION_SECRET=replace-with-local-secret
 APP_URL=http://localhost:3000
 SITE_TIMEZONE=Asia/Jakarta
@@ -62,29 +63,24 @@ Recommended PostgreSQL service:
 services:
   postgres:
     image: postgres:16
+    container_name: poultry_receiving_db
     restart: unless-stopped
-    env_file:
-      - .env.postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-poultry}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-poultry}
+      POSTGRES_DB: ${POSTGRES_DB:-poultry_receiving}
     ports:
-      - "${TAILSCALE_IP}:5432:5432"
+      - "${TAILSCALE_IP:-127.0.0.1}:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-poultry} -d $${POSTGRES_DB:-poultry_receiving}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
 volumes:
   postgres_data:
-```
-
-Example VPS-only `.env.postgres` values:
-
-```env
-POSTGRES_USER=poultry_dev
-POSTGRES_PASSWORD=strong-development-password
-POSTGRES_DB=poultry_receiving_dev
 ```
 
 Set `TAILSCALE_IP` in the Compose environment to the VPS address on the Tailnet, for example `100.x.y.z`. Also enforce the restriction with the VPS firewall. If the application later runs in the same Compose project, it can reach PostgreSQL using the internal hostname `postgres` without publishing the database port to the application container.
@@ -100,7 +96,7 @@ poultry_receiving
 
 Never point automated tests or `db:seed` at `poultry_receiving` production.
 
-Current environment status, confirmed by the operator on 2026-08-08: the database reached by the developer's active connection is a dedicated test database on the VPS, not the operational production database. Migrations and integration checks may run directly against it through Tailscale. Before destructive fixtures or seed operations, verify that the resolved database is the designated test database. Batch 20 will replace this manual confirmation with a `DATABASE_TEST_URL` guard requiring a database name ending in `_test`.
+Current environment status: The test database setup is formalized with `DATABASE_TEST_URL` and a mechanical safety guard (`assertTestDatabase`). Destructive integration setup or test execution automatically aborts if the database name does not end in `_test`. Automated PostgreSQL integration tests run serially against `DATABASE_TEST_URL` via `npm run test:pg`.
 
 ## VPS Deployment Shape
 
@@ -175,7 +171,7 @@ When the app runs inside the same VPS Compose network, use `postgres` as the hos
 - Use server firewall rules.
 - Keep VPS clock synchronized with NTP.
 
-## Backup
+## Backup & Restore
 
 Use `pg_dump` for backup.
 
@@ -185,7 +181,7 @@ Manual backup example:
 docker compose exec postgres pg_dump -U poultry poultry_receiving > backup.sql
 ```
 
-Restore example:
+Restore example into clean database:
 
 ```bash
 docker compose exec -T postgres psql -U poultry poultry_receiving < backup.sql
@@ -197,9 +193,8 @@ Recommended production policy:
 - Keep at least 7 daily backups.
 - Store backup outside the main database volume.
 - Periodically test restore.
-- Consider off-server backup copy.
 
-## Migration Flow
+## Migration & Rollback Flow
 
 From a developer laptop connected to Tailscale:
 
@@ -208,44 +203,49 @@ Test-NetConnection your-vps-tailnet-name -Port 5432
 npm run db:migrate
 ```
 
-The migration command reads `DATABASE_URL` from `.env` and applies only migrations that are not yet recorded by Drizzle. Back up databases containing operational data before applying a new migration.
-
-Recommended deployment migration flow:
+Deployment migration steps:
 
 ```text
-pull latest code
-build app image
-start/update services
-run database migrations
-restart app if needed
-verify health
+1. Create database backup (pg_dump)
+2. Pull latest code
+3. Build app image
+4. Run database migrations (npm run db:migrate)
+5. Restart app service
+6. Verify health via GET /api/health
 ```
 
-Migrations must be reviewed carefully because receiving and sensor event data are operational records.
-
-Current VPS database status, confirmed by the operator on 2026-08-08: migration `0002_remarkable_lizard.sql`, which adds `boot_id` and uniqueness on `(device_id, boot_id, sequence)`, has been applied.
+If a rollback is required, restore the latest pre-migration database snapshot using `psql` and revert the application container to the previous image tag.
 
 ## Health Checks
 
-The app should eventually expose a health endpoint:
+The application exposes a health endpoint:
 
 ```text
 GET /api/health
 ```
 
-Minimum checks:
+Checks performed:
 
-- App process alive.
-- Database reachable.
-- Migration version readable.
-- WebSocket service initialized.
+- App status & uptime.
+- Database connectivity (`SELECT 1`) & latency.
+- Migration state (`__drizzle_migrations` table check and count).
+- WebSocket broadcaster & client connection status.
 
-Admin dashboard can display:
+Response:
+- HTTP 200 when database, migrations, and WebSocket are healthy.
+- HTTP 503 Service Unavailable if database connection or WebSocket fails.
 
-- PostgreSQL status.
-- App version.
-- Device online/offline summary.
-- Last backup timestamp.
+## Smoke Testing & Verification
+
+Run these validation commands before and after deployment:
+
+```powershell
+npm run test:pg
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
 
 ## Device Network
 

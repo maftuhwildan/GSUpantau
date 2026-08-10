@@ -1,6 +1,7 @@
 import { migrate as migratePg } from 'drizzle-orm/node-postgres/migrator';
 import { migrate as migratePglite } from 'drizzle-orm/pglite/migrator';
-import { db, isPgLite } from './index';
+import { db, isPgLite, connectionString, isPgTest } from './index';
+import { assertTestDatabase } from './guard';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -10,6 +11,9 @@ export async function runMigrations() {
   if (isPgLite) {
     await migratePglite(db as any, { migrationsFolder: './drizzle' });
   } else {
+    if (isPgTest) {
+      assertTestDatabase(connectionString);
+    }
     await migratePg(db as any, { migrationsFolder: './drizzle' });
   }
   console.log('Migrations completed successfully.');
