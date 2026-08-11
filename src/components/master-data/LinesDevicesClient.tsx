@@ -23,7 +23,10 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge, type StatusTone } from '@/components/ui/status-badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -41,6 +44,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useWebSocket } from '@/components/layout/ws-provider';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -66,17 +70,17 @@ interface LineView {
 
 // ─── Status Helpers ───────────────────────────────────────────────────────────
 
-function deviceStatusVariant(status: string): 'success' | 'warning' | 'destructive' | 'secondary' {
+function deviceStatusVariant(status: string): StatusTone {
   if (status === 'ONLINE') return 'success';
   if (status === 'DEGRADED' || status === 'MAINTENANCE') return 'warning';
-  if (status === 'OFFLINE') return 'destructive';
-  return 'secondary';
+  if (status === 'OFFLINE') return 'danger';
+  return 'neutral';
 }
 
-function lineStatusVariant(status: string): 'success' | 'warning' | 'secondary' {
+function lineStatusVariant(status: string): StatusTone {
   if (status === 'ACTIVE') return 'success';
   if (status === 'MAINTENANCE') return 'warning';
-  return 'secondary';
+  return 'neutral';
 }
 
 function lineStatusLabel(status: string) {
@@ -232,7 +236,7 @@ function LineFormDialog({ open, mode, line, onClose, onSuccess }: LineFormDialog
         <form onSubmit={handleSubmit} className="space-y-3">
           {mode === 'create' && (
             <div className="space-y-1">
-              <label className="text-xs font-medium">Kode Jalur</label>
+              <Label htmlFor="input-line-code">Kode Jalur</Label>
               <Input
                 id="input-line-code"
                 value={lineCode}
@@ -244,7 +248,7 @@ function LineFormDialog({ open, mode, line, onClose, onSuccess }: LineFormDialog
             </div>
           )}
           <div className="space-y-1">
-            <label className="text-xs font-medium">Nama Jalur</label>
+            <Label htmlFor="input-line-name">Nama Jalur</Label>
             <Input
               id="input-line-name"
               value={name}
@@ -257,20 +261,14 @@ function LineFormDialog({ open, mode, line, onClose, onSuccess }: LineFormDialog
           {mode === 'edit' && (
             <>
               <div className="space-y-1">
-                <label className="text-xs font-medium">Status</label>
-                <select
-                  id="select-line-status"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE')}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="ACTIVE">AKTIF</option>
-                  <option value="MAINTENANCE">MAINTENANCE</option>
-                  <option value="INACTIVE">NONAKTIF</option>
-                </select>
+                <Label htmlFor="select-line-status">Status</Label>
+                <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
+                  <SelectTrigger id="select-line-status" className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="ACTIVE">AKTIF</SelectItem><SelectItem value="MAINTENANCE">MAINTENANCE</SelectItem><SelectItem value="INACTIVE">NONAKTIF</SelectItem></SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium">Alasan Perubahan (Opsional)</label>
+                <Label htmlFor="input-line-reason">Alasan Perubahan (Opsional)</Label>
                 <Input
                   id="input-line-reason"
                   value={reason}
@@ -386,7 +384,7 @@ function DeviceFormDialog({
         <form onSubmit={handleSubmit} className="space-y-3">
           {mode === 'create' && (
             <div className="space-y-1">
-              <label className="text-xs font-medium">Kode Perangkat</label>
+              <Label htmlFor="input-device-code">Kode Perangkat</Label>
               <Input
                 id="input-device-code"
                 value={deviceCode}
@@ -398,7 +396,7 @@ function DeviceFormDialog({
             </div>
           )}
           <div className="space-y-1">
-            <label className="text-xs font-medium">Nama Perangkat</label>
+            <Label htmlFor="input-device-name">Nama Perangkat</Label>
             <Input
               id="input-device-name"
               value={name}
@@ -409,34 +407,25 @@ function DeviceFormDialog({
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium">Jalur</label>
-            <select
-              id="select-device-line"
-              value={lineId}
-              onChange={(e) => setLineId(e.target.value)}
-              required
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
+            <Label htmlFor="select-device-line">Jalur</Label>
+            <Select value={lineId} onValueChange={setLineId} required>
+              <SelectTrigger id="select-device-line" className="w-full"><SelectValue placeholder="Pilih jalur" /></SelectTrigger>
+              <SelectContent>
               {lineList.map((l) => (
-                <option key={l.id} value={l.id}>
+                <SelectItem key={l.id} value={l.id}>
                   {l.lineCode} – {l.name}
-                </option>
+                </SelectItem>
               ))}
-            </select>
+              </SelectContent>
+            </Select>
           </div>
           {mode === 'edit' && (
             <div className="space-y-1">
-            <label className="text-xs font-medium">Status</label>
-            <select
-              id="select-device-status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value as typeof status)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="MAINTENANCE">MAINTENANCE</option>
-              <option value="UNREGISTERED">UNREGISTERED</option>
-              <option value="ONLINE">ONLINE</option>
-            </select>
+            <Label htmlFor="select-device-status">Status</Label>
+            <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
+              <SelectTrigger id="select-device-status" className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="MAINTENANCE">MAINTENANCE</SelectItem><SelectItem value="UNREGISTERED">UNREGISTERED</SelectItem><SelectItem value="ONLINE">ONLINE</SelectItem></SelectContent>
+            </Select>
           </div>
           )}
           {error && (
@@ -632,14 +621,7 @@ export default function LinesDevicesClient() {
   return (
     <div className="space-y-6">
       {/* ── Page header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-sm">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Line & Perangkat ESP32</h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Kelola jalur counting dan perangkat sensor secara aman.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <PageHeader title="Line & Perangkat ESP32" description="Kelola jalur counting dan perangkat sensor secara aman." actions={<>
           <Button id="btn-add-line" size="sm" onClick={openCreateLine}>
             <Plus className="h-4 w-4 mr-1" />
             Tambah Jalur
@@ -647,8 +629,7 @@ export default function LinesDevicesClient() {
           <Button variant="outline" size="icon" onClick={fetchLines} title="Perbarui">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
-        </div>
-      </div>
+        </>} />
 
       {/* ── Error / Loading / Empty states ── */}
       {error ? (
@@ -680,9 +661,9 @@ export default function LinesDevicesClient() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={lineStatusVariant(line.status)} className="text-[10px]">
+                    <StatusBadge tone={lineStatusVariant(line.status)} className="text-[10px]">
                       {lineStatusLabel(line.status)}
-                    </Badge>
+                    </StatusBadge>
                     <Button
                       id={`btn-edit-line-${line.id}`}
                       variant="ghost"
@@ -736,15 +717,15 @@ export default function LinesDevicesClient() {
                           </TableCell>
                           <TableCell className="text-xs">{device.name}</TableCell>
                           <TableCell>
-                            <Badge
-                              variant={deviceStatusVariant(device.status)}
+                            <StatusBadge
+                              tone={deviceStatusVariant(device.status)}
                               className="text-[10px] gap-1"
                             >
                               <Radio
                                 className={`h-2.5 w-2.5 ${device.status === 'ONLINE' ? 'animate-pulse' : ''}`}
                               />
                               {device.status}
-                            </Badge>
+                            </StatusBadge>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {device.lastHeartbeatAt

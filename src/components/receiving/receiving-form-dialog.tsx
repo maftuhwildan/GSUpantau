@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogHeader,
@@ -157,8 +160,7 @@ export function ReceivingFormDialog({
     }
   }
 
-  const handleTruckSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
+  const handleTruckSelect = (val: string) => {
     setTruckId(val);
     const found = trucks.find((t) => t.id === val);
     if (found) {
@@ -166,8 +168,7 @@ export function ReceivingFormDialog({
     }
   };
 
-  const handleDriverSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
+  const handleDriverSelect = (val: string) => {
     setDriverId(val);
     const found = drivers.find((d) => d.id === val);
     if (found) {
@@ -175,8 +176,7 @@ export function ReceivingFormDialog({
     }
   };
 
-  const handleSupplierSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
+  const handleSupplierSelect = (val: string) => {
     setSupplierId(val);
     const found = suppliers.find((s) => s.id === val);
     if (found) {
@@ -265,9 +265,10 @@ export function ReceivingFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogHeader>
+      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-hidden p-0 sm:max-w-3xl">
+      <DialogHeader className="px-5 pt-5 sm:px-6 sm:pt-6">
         <DialogTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-purple-600" />
+          <FileText className="h-5 w-5 text-primary" />
           <span>{isEditing ? 'Edit / Revisi Surat Jalan' : 'Input Surat Jalan Baru (Draft)'}</span>
         </DialogTitle>
         <DialogDescription>
@@ -278,7 +279,7 @@ export function ReceivingFormDialog({
       </DialogHeader>
 
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-        <DialogContent className="space-y-4">
+        <div className="max-h-[calc(100svh-13rem)] space-y-4 overflow-y-auto px-5 sm:px-6">
           {errorMsg && (
             <div className="p-3 text-xs bg-red-50 text-red-700 border border-red-200 rounded-lg flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0" />
@@ -301,10 +302,9 @@ export function ReceivingFormDialog({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium mb-1 block flex items-center gap-1">
-                <FileText className="h-3.5 w-3.5 text-slate-500" /> No. Surat Jalan *
-              </label>
+              <Label htmlFor="delivery-note-number"><FileText /> No. Surat Jalan *</Label>
               <Input
+                id="delivery-note-number"
                 value={deliveryNoteNumber}
                 onChange={(e) => setDeliveryNoteNumber(e.target.value)}
                 placeholder="misal: SJ-2026-0807-001"
@@ -314,10 +314,9 @@ export function ReceivingFormDialog({
             </div>
 
             <div>
-              <label className="text-xs font-medium mb-1 block flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5 text-slate-500" /> Tanggal Penerimaan *
-              </label>
+              <Label htmlFor="receiving-date"><Calendar /> Tanggal Penerimaan *</Label>
               <Input
+                id="receiving-date"
                 type="date"
                 value={receivingDate}
                 onChange={(e) => setReceivingDate(e.target.value)}
@@ -329,26 +328,23 @@ export function ReceivingFormDialog({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium mb-1 block flex items-center gap-1">
-                <Truck className="h-3.5 w-3.5 text-slate-500" /> Pilih Truck Master (Opsional)
-              </label>
-              <select
-                value={truckId}
-                onChange={handleTruckSelect}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="">-- Pilih Truck --</option>
+              <Label htmlFor="truck-master"><Truck /> Pilih Truck Master (Opsional)</Label>
+              <Select value={truckId} onValueChange={handleTruckSelect}>
+                <SelectTrigger id="truck-master" className="w-full"><SelectValue placeholder="Pilih Truck" /></SelectTrigger>
+                <SelectContent>
                 {trucks.map((t) => (
-                  <option key={t.id} value={t.id}>
+                  <SelectItem key={t.id} value={t.id}>
                     {t.licensePlate} {t.carrierName ? `(${t.carrierName})` : ''}
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
-              <label className="text-xs font-medium mb-1 block">Plat Nomor Truck (Snapshot) *</label>
+              <Label htmlFor="license-plate-snapshot">Plat Nomor Truck (Snapshot) *</Label>
               <Input
+                id="license-plate-snapshot"
                 value={licensePlateSnapshot}
                 onChange={(e) => setLicensePlateSnapshot(e.target.value)}
                 placeholder="misal: B 9101 RPA"
@@ -360,26 +356,23 @@ export function ReceivingFormDialog({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium mb-1 block flex items-center gap-1">
-                <User className="h-3.5 w-3.5 text-slate-500" /> Pilih Supir Master (Opsional)
-              </label>
-              <select
-                value={driverId}
-                onChange={handleDriverSelect}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="">-- Pilih Supir --</option>
+              <Label htmlFor="driver-master"><User /> Pilih Supir Master (Opsional)</Label>
+              <Select value={driverId} onValueChange={handleDriverSelect}>
+                <SelectTrigger id="driver-master" className="w-full"><SelectValue placeholder="Pilih Supir" /></SelectTrigger>
+                <SelectContent>
                 {drivers.map((d) => (
-                  <option key={d.id} value={d.id}>
+                  <SelectItem key={d.id} value={d.id}>
                     {d.name} {d.phone ? `(${d.phone})` : ''}
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
-              <label className="text-xs font-medium mb-1 block">Nama Supir (Snapshot) *</label>
+              <Label htmlFor="driver-name-snapshot">Nama Supir (Snapshot) *</Label>
               <Input
+                id="driver-name-snapshot"
                 value={driverNameSnapshot}
                 onChange={(e) => setDriverNameSnapshot(e.target.value)}
                 placeholder="misal: Budi Santoso"
@@ -391,26 +384,23 @@ export function ReceivingFormDialog({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium mb-1 block flex items-center gap-1">
-                <Building2 className="h-3.5 w-3.5 text-slate-500" /> Pilih Supplier Master (Opsional)
-              </label>
-              <select
-                value={supplierId}
-                onChange={handleSupplierSelect}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="">-- Pilih Supplier --</option>
+              <Label htmlFor="supplier-master"><Building2 /> Pilih Supplier Master (Opsional)</Label>
+              <Select value={supplierId} onValueChange={handleSupplierSelect}>
+                <SelectTrigger id="supplier-master" className="w-full"><SelectValue placeholder="Pilih Supplier" /></SelectTrigger>
+                <SelectContent>
                 {suppliers.map((s) => (
-                  <option key={s.id} value={s.id}>
+                  <SelectItem key={s.id} value={s.id}>
                     {s.name} ({s.code})
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
-              <label className="text-xs font-medium mb-1 block">Nama Supplier (Snapshot) *</label>
+              <Label htmlFor="supplier-name-snapshot">Nama Supplier (Snapshot) *</Label>
               <Input
+                id="supplier-name-snapshot"
                 value={supplierNameSnapshot}
                 onChange={(e) => setSupplierNameSnapshot(e.target.value)}
                 placeholder="misal: Farm Sukses Mandiri"
@@ -422,41 +412,37 @@ export function ReceivingFormDialog({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-medium mb-1 block flex items-center gap-1">
-                <Hash className="h-3.5 w-3.5 text-slate-500" /> Jumlah Manifest (Ekor) *
-              </label>
+              <Label htmlFor="manifest-count"><Hash /> Jumlah Manifest (Ekor) *</Label>
               <Input
+                id="manifest-count"
                 type="number"
                 min="1"
                 value={manifestCount}
                 onChange={(e) => setManifestCount(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="5000"
                 required
-                className="text-xs font-bold text-purple-700 dark:text-purple-400"
+                className="text-xs font-bold text-primary"
               />
             </div>
 
             <div>
-              <label className="text-xs font-medium mb-1 block flex items-center gap-1">
-                <Layers className="h-3.5 w-3.5 text-slate-500" /> Jalur Line Penerimaan
-              </label>
-              <select
-                value={lineId}
-                onChange={(e) => setLineId(e.target.value)}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="">-- Belum Ditentukan --</option>
+              <Label htmlFor="receiving-line"><Layers /> Jalur Line Penerimaan</Label>
+              <Select value={lineId} onValueChange={setLineId}>
+                <SelectTrigger id="receiving-line" className="w-full"><SelectValue placeholder="Belum Ditentukan" /></SelectTrigger>
+                <SelectContent>
                 {lines.map((l) => (
-                  <option key={l.id} value={l.id}>
+                  <SelectItem key={l.id} value={l.id}>
                     {l.lineCode} - {l.name}
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
-              <label className="text-xs font-medium mb-1 block">Posisi Antrean</label>
+              <Label htmlFor="queue-position">Posisi Antrean</Label>
               <Input
+                id="queue-position"
                 type="number"
                 min="1"
                 value={queuePosition}
@@ -468,33 +454,33 @@ export function ReceivingFormDialog({
 
           {isManifestChanged && (
             <div>
-              <label className="text-xs font-semibold mb-1 block text-amber-800 dark:text-amber-400">
+              <Label htmlFor="manifest-revision-reason" className="text-warning-foreground">
                 Alasan Revisi Manifest *
-              </label>
-              <textarea
+              </Label>
+              <Textarea
+                id="manifest-revision-reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Jelaskan alasan perubahan jumlah manifest (misal: koreksi fisik dari vendor)..."
                 required
-                rows={2}
-                className="w-full p-2.5 rounded-md border border-amber-300 bg-amber-50/50 dark:bg-amber-950/30 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
+                className="min-h-20 border-warning/30 bg-warning/10 text-xs"
               />
             </div>
           )}
 
           <div>
-            <label className="text-xs font-medium mb-1 block">Catatan Tambahan</label>
-            <textarea
+            <Label htmlFor="receiving-notes">Catatan Tambahan</Label>
+            <Textarea
+              id="receiving-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Catatan opsional mengenai pengiriman..."
-              rows={2}
-              className="w-full p-2.5 rounded-md border border-input bg-background text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="min-h-20 text-xs"
             />
           </div>
-        </DialogContent>
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="border-t px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
           <Button
             type="button"
             variant="outline"
@@ -507,12 +493,13 @@ export function ReceivingFormDialog({
           <Button
             type="submit"
             disabled={loading}
-            className="bg-purple-600 hover:bg-purple-500 text-white text-xs"
+            className="text-xs"
           >
             {loading ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Simpan Draft'}
           </Button>
         </DialogFooter>
       </form>
+      </DialogContent>
     </Dialog>
   );
 }

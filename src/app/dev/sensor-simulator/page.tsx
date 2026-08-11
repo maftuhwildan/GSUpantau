@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { applyDeviceHealthViewUpdate } from "@/lib/device-health-view";
 import {
   Radio,
@@ -472,7 +474,7 @@ export default function SensorSimulatorPage() {
         {/* Left Column: Device Config & Controls */}
         <div className="lg:col-span-1 space-y-6">
           {/* Device Selection Card */}
-          <Card className="border-purple-100 shadow-sm">
+          <Card className="border-purple-100 shadow-xs">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
                 <Radio className="h-4 w-4 text-purple-600" />
@@ -484,40 +486,33 @@ export default function SensorSimulatorPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-700">Jalur Penerimaan (Line)</label>
-                <select
-                  value={selectedLineCode}
-                  onChange={(e) => handleLineChange(e.target.value)}
-                  className="w-full text-xs rounded-md border border-slate-200 p-2 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
+                <Label htmlFor="simulator-line">Jalur Penerimaan (Line)</Label>
+                <Select value={selectedLineCode} onValueChange={handleLineChange}><SelectTrigger id="simulator-line" className="w-full"><SelectValue placeholder="Pilih jalur" /></SelectTrigger><SelectContent>
                   {options.map((line) => (
-                    <option key={line.id} value={line.lineCode}>
+                    <SelectItem key={line.id} value={line.lineCode}>
                       {line.lineCode} - {line.name}
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
+                </SelectContent></Select>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-700">Perangkat ESP32</label>
-                <select
-                  value={selectedDeviceCode}
-                  onChange={(e) => handleDeviceChange(e.target.value)}
-                  className="w-full text-xs rounded-md border border-slate-200 p-2 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
+                <Label htmlFor="simulator-device">Perangkat ESP32</Label>
+                <Select value={selectedDeviceCode} onValueChange={handleDeviceChange}><SelectTrigger id="simulator-device" className="w-full"><SelectValue placeholder="Pilih perangkat" /></SelectTrigger><SelectContent>
                   {options
                     .find((l) => l.lineCode === selectedLineCode)
                     ?.devices.map((dev) => (
-                      <option key={dev.id} value={dev.deviceCode}>
+                      <SelectItem key={dev.id} value={dev.deviceCode}>
                         {dev.deviceCode} ({dev.name})
-                      </option>
+                      </SelectItem>
                     ))}
-                </select>
+                </SelectContent></Select>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-700">Secret Token Perangkat</label>
+                <Label htmlFor="simulator-secret">Secret Token Perangkat</Label>
                 <Input
+                  id="simulator-secret"
                   type="text"
                   value={deviceSecret}
                   onChange={(e) => setDeviceSecret(e.target.value)}
@@ -557,7 +552,7 @@ export default function SensorSimulatorPage() {
           </Card>
 
           {/* Device Status & Offline Simulation Card */}
-          <Card className="border-purple-100 shadow-sm">
+          <Card className="border-purple-100 shadow-xs">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
                 {heartbeatStatus === "ONLINE" ? (
@@ -647,7 +642,7 @@ export default function SensorSimulatorPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Realtime Active Session Dashboard Bar */}
           {activeSessionInfo && (
-            <div className="p-4 rounded-xl bg-gradient-to-r from-purple-900 to-slate-900 text-white shadow-md flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-linear-to-r from-purple-900 to-slate-900 text-white shadow-md flex items-center justify-between">
               <div>
                 <p className="text-[11px] text-purple-200 font-medium">SESI AKTIF PADA {selectedLineCode}</p>
                 <h3 className="text-lg font-bold">Surat Jalan #{activeSessionInfo.receivingNumber}</h3>
@@ -677,7 +672,7 @@ export default function SensorSimulatorPage() {
           )}
 
           {/* Action Simulator Panel */}
-          <Card className="border-purple-100 shadow-sm">
+          <Card className="border-purple-100 shadow-xs">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
                 <Zap className="h-4 w-4 text-purple-600" />
@@ -692,7 +687,7 @@ export default function SensorSimulatorPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Button
                   size="lg"
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold gap-2 shadow-sm"
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold gap-2 shadow-xs"
                   onClick={() => sendDetections(1)}
                   disabled={!selectedDeviceCode}
                 >
@@ -788,7 +783,7 @@ export default function SensorSimulatorPage() {
           </Card>
 
           {/* Console Log Panel */}
-          <Card className="border-purple-100 shadow-sm">
+          <Card className="border-purple-100 shadow-xs">
             <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
               <div>
                 <CardTitle className="text-base font-semibold flex items-center gap-2">

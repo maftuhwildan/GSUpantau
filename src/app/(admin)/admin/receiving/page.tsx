@@ -10,6 +10,7 @@ import { QueueTable, ReceivingData } from '@/components/receiving/queue-table';
 import { ReceivingFormDialog } from '@/components/receiving/receiving-form-dialog';
 import { ReceivingCancelDialog } from '@/components/receiving/receiving-cancel-dialog';
 import { StartCountingDialog } from '@/components/receiving/start-counting-dialog';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function AdminReceivingPage() {
   const [receivings, setReceivings] = useState<ReceivingData[]>([]);
@@ -113,24 +114,15 @@ export default function AdminReceivingPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-sm">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Kelola Surat Jalan (Receiving Management)</h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Input data manifest pengiriman truck, terbitkan antrean (Publish), atau revisi manifest dengan alasan audit.
-          </p>
-        </div>
-        <div className="flex gap-2">
+      <PageHeader title="Kelola Surat Jalan" description="Input data manifest pengiriman truck, terbitkan antrean, atau revisi manifest dengan alasan audit." actions={<>
           <Button variant="outline" size="sm" onClick={fetchReceivings} className="text-xs gap-1">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
-          <Button onClick={handleCreateNew} className="bg-purple-600 hover:bg-purple-500 text-white text-xs gap-1.5">
+          <Button onClick={handleCreateNew} className="text-xs gap-1.5">
             <Plus className="h-4 w-4" />
             <span>Input Surat Jalan Baru (Draft)</span>
           </Button>
-        </div>
-      </div>
+        </>} />
 
       {/* Filter & Search Bar */}
       <Card className="border-border p-4">

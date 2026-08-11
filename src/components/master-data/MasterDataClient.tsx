@@ -16,6 +16,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge as UiStatusBadge } from '@/components/ui/status-badge';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
   Dialog,
@@ -70,9 +74,9 @@ interface Supplier {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <Badge variant={status === 'ACTIVE' ? 'success' : 'secondary'} className="text-[10px]">
+    <UiStatusBadge tone={status === 'ACTIVE' ? 'success' : 'neutral'} className="text-[10px]">
       {status === 'ACTIVE' ? 'AKTIF' : 'NONAKTIF'}
-    </Badge>
+    </UiStatusBadge>
   );
 }
 
@@ -142,18 +146,20 @@ function FormField({
   required,
   children,
   error,
+  htmlFor,
 }: {
   label: string;
   required?: boolean;
   children: React.ReactNode;
   error?: string;
+  htmlFor?: string;
 }) {
   return (
     <div className="space-y-1">
-      <label className="text-xs font-medium text-foreground">
+      <Label htmlFor={htmlFor} className="text-xs font-medium text-foreground">
         {label}
         {required && <span className="text-destructive ml-0.5">*</span>}
-      </label>
+      </Label>
       {children}
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
@@ -361,20 +367,21 @@ function TrucksSection() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
         <DialogHeader>
           <DialogTitle>{editTarget ? 'Edit Truck' : 'Tambah Truck'}</DialogTitle>
           <DialogDescription>
             {editTarget ? `Perbarui data truck ${editTarget.licensePlate}` : 'Daftarkan armada baru ke sistem.'}
           </DialogDescription>
         </DialogHeader>
-        <DialogContent>
+        <div className="space-y-4">
           {formError && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-xs">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{formError}</span>
             </div>
           )}
-          <FormField label="Plat Nomor" required>
+          <FormField label="Plat Nomor" htmlFor="truck-form-license-plate" required>
             <Input
               id="truck-form-license-plate"
               value={licensePlate}
@@ -384,7 +391,7 @@ function TrucksSection() {
               className="text-xs uppercase"
             />
           </FormField>
-          <FormField label="Nama Armada / Carrier">
+          <FormField label="Nama Armada / Carrier" htmlFor="truck-form-carrier-name">
             <Input
               id="truck-form-carrier-name"
               value={carrierName}
@@ -394,7 +401,7 @@ function TrucksSection() {
               className="text-xs"
             />
           </FormField>
-        </DialogContent>
+        </div>
         <DialogFooter>
           <Button
             id="btn-truck-form-cancel"
@@ -416,6 +423,7 @@ function TrucksSection() {
             {editTarget ? 'Simpan Perubahan' : 'Tambah Truck'}
           </Button>
         </DialogFooter>
+        </DialogContent>
       </Dialog>
     </Card>
   );
@@ -622,20 +630,21 @@ function DriversSection() {
       </CardContent>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
         <DialogHeader>
           <DialogTitle>{editTarget ? 'Edit Supir' : 'Tambah Supir'}</DialogTitle>
           <DialogDescription>
             {editTarget ? `Perbarui data supir ${editTarget.name}` : 'Daftarkan pengemudi baru ke sistem.'}
           </DialogDescription>
         </DialogHeader>
-        <DialogContent>
+        <div className="space-y-4">
           {formError && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-xs">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{formError}</span>
             </div>
           )}
-          <FormField label="Nama Lengkap" required>
+          <FormField label="Nama Lengkap" htmlFor="driver-form-name" required>
             <Input
               id="driver-form-name"
               value={name}
@@ -645,7 +654,7 @@ function DriversSection() {
               className="text-xs"
             />
           </FormField>
-          <FormField label="Nomor SIM">
+          <FormField label="Nomor SIM" htmlFor="driver-form-license">
             <Input
               id="driver-form-license"
               value={licenseNumber}
@@ -655,7 +664,7 @@ function DriversSection() {
               className="text-xs"
             />
           </FormField>
-          <FormField label="Nomor Telepon">
+          <FormField label="Nomor Telepon" htmlFor="driver-form-phone">
             <Input
               id="driver-form-phone"
               value={phone}
@@ -665,7 +674,7 @@ function DriversSection() {
               className="text-xs"
             />
           </FormField>
-        </DialogContent>
+        </div>
         <DialogFooter>
           <Button
             id="btn-driver-form-cancel"
@@ -687,6 +696,7 @@ function DriversSection() {
             {editTarget ? 'Simpan Perubahan' : 'Tambah Supir'}
           </Button>
         </DialogFooter>
+        </DialogContent>
       </Dialog>
     </Card>
   );
@@ -897,20 +907,21 @@ function SuppliersSection() {
       </CardContent>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
         <DialogHeader>
           <DialogTitle>{editTarget ? 'Edit Supplier' : 'Tambah Supplier'}</DialogTitle>
           <DialogDescription>
             {editTarget ? `Perbarui data supplier ${editTarget.name}` : 'Daftarkan mitra peternakan baru.'}
           </DialogDescription>
         </DialogHeader>
-        <DialogContent>
+        <div className="space-y-4">
           {formError && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-xs">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{formError}</span>
             </div>
           )}
-          <FormField label="Kode Supplier" required>
+          <FormField label="Kode Supplier" htmlFor="supplier-form-code" required>
             <Input
               id="supplier-form-code"
               value={code}
@@ -920,7 +931,7 @@ function SuppliersSection() {
               className="text-xs uppercase"
             />
           </FormField>
-          <FormField label="Nama Supplier / Farm" required>
+          <FormField label="Nama Supplier / Farm" htmlFor="supplier-form-name" required>
             <Input
               id="supplier-form-name"
               value={name}
@@ -930,7 +941,7 @@ function SuppliersSection() {
               className="text-xs"
             />
           </FormField>
-          <FormField label="Nomor Telepon">
+          <FormField label="Nomor Telepon" htmlFor="supplier-form-phone">
             <Input
               id="supplier-form-phone"
               value={phone}
@@ -940,16 +951,16 @@ function SuppliersSection() {
               className="text-xs"
             />
           </FormField>
-          <FormField label="Alamat">
-            <textarea
+          <FormField label="Alamat" htmlFor="supplier-form-address">
+            <Textarea
               id="supplier-form-address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Opsional"
-              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring min-h-[60px] resize-none"
+              className="min-h-20 resize-none text-xs"
             />
           </FormField>
-        </DialogContent>
+        </div>
         <DialogFooter>
           <Button
             id="btn-supplier-form-cancel"
@@ -971,6 +982,7 @@ function SuppliersSection() {
             {editTarget ? 'Simpan Perubahan' : 'Tambah Supplier'}
           </Button>
         </DialogFooter>
+        </DialogContent>
       </Dialog>
     </Card>
   );
@@ -981,14 +993,7 @@ function SuppliersSection() {
 export default function MasterDataClient() {
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-sm">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Kelola Master Data</h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Manajemen acuan data Truck, Supir, dan Supplier/Farm. Receiving menyimpan snapshot agar data historis terlindungi.
-          </p>
-        </div>
-      </div>
+      <PageHeader title="Kelola Master Data" description="Manajemen acuan Truck, Supir, dan Supplier. Receiving menyimpan snapshot agar data historis terlindungi." />
 
       <div className="grid grid-cols-1 gap-6">
         <TrucksSection />

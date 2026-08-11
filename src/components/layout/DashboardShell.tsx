@@ -1,30 +1,32 @@
-import React from "react";
-import { Sidebar } from "./Sidebar";
-import { Header } from "./Header";
-import { WebSocketProvider } from "./ws-provider";
+import type { ReactNode } from "react"
+
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { Header } from "./Header"
+import { Sidebar } from "./Sidebar"
+import type { AppRole } from "./navigation"
+import { WebSocketProvider } from "./ws-provider"
 
 interface DashboardShellProps {
-  children: React.ReactNode;
-  role: "OPERATOR" | "ADMIN";
-  userEmail?: string;
+  children: ReactNode
+  role: AppRole
+  userEmail?: string
+  sidebarDefaultOpen?: boolean
 }
 
-export function DashboardShell({
-  children,
-  role,
-  userEmail,
-}: DashboardShellProps) {
+export function DashboardShell({ children, role, userEmail, sidebarDefaultOpen = true }: DashboardShellProps) {
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-background overflow-hidden font-sans">
+    <SidebarProvider defaultOpen={sidebarDefaultOpen} className="h-svh overflow-hidden">
       <Sidebar role={role} />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <SidebarInset className="min-w-0 overflow-hidden">
         <WebSocketProvider>
           <Header role={role} userEmail={userEmail} />
-          <main className="flex-1 overflow-y-auto p-6 space-y-6">
-            {children}
+          <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+            <div className="mx-auto w-full max-w-400 space-y-4 p-3 pb-24 sm:space-y-6 sm:p-5 sm:pb-6 lg:p-6">
+              {children}
+            </div>
           </main>
         </WebSocketProvider>
-      </div>
-    </div>
-  );
+      </SidebarInset>
+    </SidebarProvider>
+  )
 }

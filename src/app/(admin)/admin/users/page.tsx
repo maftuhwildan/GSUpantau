@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -210,7 +212,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-xs">
         <div>
           <h1 className="text-xl font-bold text-foreground">Kelola Pengguna & Peran (User Management)</h1>
           <p className="text-xs text-muted-foreground mt-1">
@@ -351,8 +353,9 @@ export default function AdminUsersPage() {
             )}
 
             <div className="space-y-1">
-              <label className="font-semibold text-foreground">Nama Lengkap</label>
+              <Label htmlFor="add-user-name">Nama Lengkap</Label>
               <Input
+                id="add-user-name"
                 value={addName}
                 onChange={(e) => setAddName(e.target.value)}
                 placeholder="Contoh: Budi Santoso"
@@ -362,8 +365,9 @@ export default function AdminUsersPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="font-semibold text-foreground">Email Login</label>
+              <Label htmlFor="add-user-email">Email Login</Label>
               <Input
+                id="add-user-email"
                 type="email"
                 value={addEmail}
                 onChange={(e) => setAddEmail(e.target.value)}
@@ -374,8 +378,9 @@ export default function AdminUsersPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="font-semibold text-foreground">Password (min. 12 Karakter)</label>
+              <Label htmlFor="add-user-password">Password (min. 12 Karakter)</Label>
               <Input
+                id="add-user-password"
                 type="password"
                 value={addPassword}
                 onChange={(e) => setAddPassword(e.target.value)}
@@ -388,47 +393,28 @@ export default function AdminUsersPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="font-semibold text-foreground">Peran (Role)</label>
-                <select
-                  value={addRole}
-                  onChange={(e) => setAddRole(e.target.value as "ADMIN" | "OPERATOR")}
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none"
-                >
-                  <option value="OPERATOR">OPERATOR</option>
-                  <option value="ADMIN">ADMIN</option>
-                </select>
+                <Label htmlFor="add-user-role">Peran (Role)</Label>
+                <Select value={addRole} onValueChange={(value) => setAddRole(value as typeof addRole)}><SelectTrigger id="add-user-role" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="OPERATOR">OPERATOR</SelectItem><SelectItem value="ADMIN">ADMIN</SelectItem></SelectContent></Select>
               </div>
 
               <div className="space-y-1">
-                <label className="font-semibold text-foreground">Status Akun</label>
-                <select
-                  value={addStatus}
-                  onChange={(e) => setAddStatus(e.target.value as "ACTIVE" | "INACTIVE")}
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none"
-                >
-                  <option value="ACTIVE">AKTIF</option>
-                  <option value="INACTIVE">INAKTIF</option>
-                </select>
+                <Label htmlFor="add-user-status">Status Akun</Label>
+                <Select value={addStatus} onValueChange={(value) => setAddStatus(value as typeof addStatus)}><SelectTrigger id="add-user-status" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ACTIVE">AKTIF</SelectItem><SelectItem value="INACTIVE">INAKTIF</SelectItem></SelectContent></Select>
               </div>
             </div>
 
             {addRole === "OPERATOR" && (
               <div className="space-y-1">
-                <label className="font-semibold text-foreground text-purple-700 dark:text-purple-400">
+                <Label htmlFor="add-user-line" className="text-primary">
                   Line Tugas Operator (Wajib)
-                </label>
-                <select
-                  value={addAssignedLineId}
-                  onChange={(e) => setAddAssignedLineId(e.target.value)}
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none"
-                  required
-                >
+                </Label>
+                <Select value={addAssignedLineId} onValueChange={setAddAssignedLineId} required><SelectTrigger id="add-user-line" className="w-full"><SelectValue placeholder="Pilih line" /></SelectTrigger><SelectContent>
                   {lines.map((l) => (
-                    <option key={l.id} value={l.id}>
+                    <SelectItem key={l.id} value={l.id}>
                       {l.name} ({l.lineCode})
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
+                </SelectContent></Select>
               </div>
             )}
 
@@ -471,8 +457,9 @@ export default function AdminUsersPage() {
             )}
 
             <div className="space-y-1">
-              <label className="font-semibold text-foreground">Nama Lengkap</label>
+              <Label htmlFor="edit-user-name">Nama Lengkap</Label>
               <Input
+                id="edit-user-name"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 required
@@ -481,8 +468,9 @@ export default function AdminUsersPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="font-semibold text-foreground">Email Login</label>
+              <Label htmlFor="edit-user-email">Email Login</Label>
               <Input
+                id="edit-user-email"
                 type="email"
                 value={editEmail}
                 onChange={(e) => setEditEmail(e.target.value)}
@@ -492,11 +480,12 @@ export default function AdminUsersPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="font-semibold text-foreground flex items-center gap-1">
+              <Label htmlFor="edit-user-password" className="flex items-center gap-1">
                 <KeyRound className="h-3.5 w-3.5 text-purple-600" />
                 <span>Reset Password Baru (Opsional, min. 12 Karakter)</span>
-              </label>
+              </Label>
               <Input
+                id="edit-user-password"
                 type="password"
                 value={editPassword}
                 onChange={(e) => setEditPassword(e.target.value)}
@@ -508,47 +497,28 @@ export default function AdminUsersPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="font-semibold text-foreground">Peran (Role)</label>
-                <select
-                  value={editRole}
-                  onChange={(e) => setEditRole(e.target.value as "ADMIN" | "OPERATOR")}
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none"
-                >
-                  <option value="OPERATOR">OPERATOR</option>
-                  <option value="ADMIN">ADMIN</option>
-                </select>
+                <Label htmlFor="edit-user-role">Peran (Role)</Label>
+                <Select value={editRole} onValueChange={(value) => setEditRole(value as typeof editRole)}><SelectTrigger id="edit-user-role" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="OPERATOR">OPERATOR</SelectItem><SelectItem value="ADMIN">ADMIN</SelectItem></SelectContent></Select>
               </div>
 
               <div className="space-y-1">
-                <label className="font-semibold text-foreground">Status Akun</label>
-                <select
-                  value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value as "ACTIVE" | "INACTIVE")}
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none"
-                >
-                  <option value="ACTIVE">AKTIF</option>
-                  <option value="INACTIVE">INAKTIF</option>
-                </select>
+                <Label htmlFor="edit-user-status">Status Akun</Label>
+                <Select value={editStatus} onValueChange={(value) => setEditStatus(value as typeof editStatus)}><SelectTrigger id="edit-user-status" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ACTIVE">AKTIF</SelectItem><SelectItem value="INACTIVE">INAKTIF</SelectItem></SelectContent></Select>
               </div>
             </div>
 
             {editRole === "OPERATOR" && (
               <div className="space-y-1">
-                <label className="font-semibold text-foreground text-purple-700 dark:text-purple-400">
+                <Label htmlFor="edit-user-line" className="text-primary">
                   Line Tugas Operator (Wajib)
-                </label>
-                <select
-                  value={editAssignedLineId}
-                  onChange={(e) => setEditAssignedLineId(e.target.value)}
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none"
-                  required
-                >
+                </Label>
+                <Select value={editAssignedLineId} onValueChange={setEditAssignedLineId} required><SelectTrigger id="edit-user-line" className="w-full"><SelectValue placeholder="Pilih line" /></SelectTrigger><SelectContent>
                   {lines.map((l) => (
-                    <option key={l.id} value={l.id}>
+                    <SelectItem key={l.id} value={l.id}>
                       {l.name} ({l.lineCode})
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
+                </SelectContent></Select>
               </div>
             )}
 

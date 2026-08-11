@@ -1,160 +1,93 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Bird, Lock, Mail, ArrowRight, Info, AlertCircle, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { AlertCircle, ArrowRight, Bird, Info, Loader2, Lock, Mail } from "lucide-react"
+
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("admin@local.test");
-  const [password, setPassword] = useState("password");
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const router = useRouter()
+  const [email, setEmail] = useState("admin@local.test")
+  const [password, setPassword] = useState("password")
+  const [loading, setLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setErrorMessage(null);
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setLoading(true)
+    setErrorMessage(null)
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
-      });
+      })
+      const data = await response.json()
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setErrorMessage(data.error?.message || "Gagal masuk. Periksa kembali email dan kata sandi Anda.");
-        setLoading(false);
-        return;
+      if (!response.ok) {
+        setErrorMessage(data.error?.message || "Gagal masuk. Periksa kembali email dan kata sandi Anda.")
+        return
       }
 
-      const roles = data.user?.roles || [];
-      const redirectUrl = roles.includes("ADMIN") ? "/admin/dashboard" : "/dashboard";
-      router.push(redirectUrl);
-      router.refresh();
+      router.push(data.user?.roles?.includes("ADMIN") ? "/admin/dashboard" : "/dashboard")
+      router.refresh()
     } catch {
-      setErrorMessage("Terjadi kesalahan koneksi ke server. Silakan coba lagi.");
-      setLoading(false);
+      setErrorMessage("Terjadi kesalahan koneksi ke server. Silakan coba lagi.")
+    } finally {
+      setLoading(false)
     }
-  };
+  }
 
-  const handleFillCredentials = (devEmail: string) => {
-    setEmail(devEmail);
-    setPassword("password");
-    setErrorMessage(null);
-  };
+  const fillCredentials = (developmentEmail: string) => {
+    setEmail(developmentEmail)
+    setPassword("password")
+    setErrorMessage(null)
+  }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-slate-800/90 border-slate-700 text-white shadow-2xl">
-        <CardHeader className="text-center space-y-2">
-          <div className="mx-auto p-3 rounded-2xl bg-purple-600/30 border border-purple-400/30 w-fit">
-            <Bird className="h-8 w-8 text-pink-400" />
-          </div>
-          <CardTitle className="text-2xl font-bold tracking-tight text-white">
-            GSU Pantau Login
-          </CardTitle>
-          <CardDescription className="text-slate-400 text-xs">
-            Masuk ke Sistem Penghitung Penerimaan Ayam RPA
-          </CardDescription>
+    <main className="relative flex min-h-svh items-center justify-center overflow-hidden bg-muted/30 p-4">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-linear-to-b from-primary/10 to-transparent" />
+      <Card className="relative w-full max-w-md shadow-xl">
+        <CardHeader className="space-y-2 text-center">
+          <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20"><Bird className="size-7" /></span>
+          <CardTitle className="font-heading text-2xl">Masuk ke GSU Pantau</CardTitle>
+          <CardDescription>Sistem Penghitung Penerimaan Ayam RPA</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {errorMessage && (
-            <div className="p-3 rounded-lg bg-red-950/60 border border-red-700/50 text-red-300 text-xs flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-              <span>{errorMessage}</span>
-            </div>
-          )}
+          {errorMessage ? <Alert variant="destructive"><AlertCircle /><AlertDescription>{errorMessage}</AlertDescription></Alert> : null}
 
           <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
-                <Mail className="h-3.5 w-3.5 text-purple-400" /> Email
-              </label>
-              <Input
-                type="email"
-                placeholder="nama@perusahaan.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="bg-slate-900/60 border-slate-700 text-white placeholder:text-slate-500 focus:border-purple-500"
-              />
+            <div className="space-y-2">
+              <Label htmlFor="email" className="flex items-center gap-1.5"><Mail /> Email</Label>
+              <Input id="email" type="email" autoComplete="email" placeholder="nama@perusahaan.com" value={email} onChange={(event) => setEmail(event.target.value)} required />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
-                <Lock className="h-3.5 w-3.5 text-purple-400" /> Kata Sandi
-              </label>
-              <Input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="bg-slate-900/60 border-slate-700 text-white placeholder:text-slate-500 focus:border-purple-500"
-              />
+            <div className="space-y-2">
+              <Label htmlFor="password" className="flex items-center gap-1.5"><Lock /> Kata Sandi</Label>
+              <Input id="password" type="password" autoComplete="current-password" placeholder="••••••••" value={password} onChange={(event) => setPassword(event.target.value)} required />
             </div>
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-purple-600 hover:bg-purple-500 text-white gap-2 font-medium"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Memproses...</span>
-                </>
-              ) : (
-                <>
-                  <span>Masuk Sistem</span>
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
+            <Button type="submit" disabled={loading} className="h-11 w-full gap-2">
+              {loading ? <><Loader2 className="animate-spin" /> Memproses...</> : <>Masuk Sistem <ArrowRight /></>}
             </Button>
           </form>
 
-          {/* Dev credentials box */}
-          <div className="p-3.5 rounded-lg bg-purple-950/40 border border-purple-800/40 space-y-2 text-xs">
-            <div className="flex items-center gap-1.5 font-semibold text-purple-300">
-              <Info className="h-4 w-4" />
-              <span>Akun Pengembang (Development Users):</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
-              <button
-                type="button"
-                onClick={() => handleFillCredentials("operator@local.test")}
-                className="p-2 rounded bg-slate-900/60 hover:bg-purple-900/40 border border-slate-800 hover:border-purple-700 text-left transition-colors cursor-pointer"
-              >
-                <p className="font-medium text-emerald-400">OPERATOR</p>
-                <p className="text-slate-400">operator@local.test</p>
-                <p className="text-[10px] text-slate-500">Klik untuk isi data</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillCredentials("admin@local.test")}
-                className="p-2 rounded bg-slate-900/60 hover:bg-purple-900/40 border border-slate-800 hover:border-purple-700 text-left transition-colors cursor-pointer"
-              >
-                <p className="font-medium text-purple-400">ADMIN</p>
-                <p className="text-slate-400">admin@local.test</p>
-                <p className="text-[10px] text-slate-500">Klik untuk isi data</p>
-              </button>
+          <div className="space-y-2 rounded-xl border bg-muted/40 p-3.5 text-xs">
+            <p className="flex items-center gap-1.5 font-semibold"><Info /> Akun development</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Button type="button" variant="outline" onClick={() => fillCredentials("operator@local.test")} className="h-auto min-h-14 justify-start p-3 text-left"><span><span className="block font-medium text-success">OPERATOR</span><span className="block text-xs text-muted-foreground">operator@local.test</span></span></Button>
+              <Button type="button" variant="outline" onClick={() => fillCredentials("admin@local.test")} className="h-auto min-h-14 justify-start p-3 text-left"><span><span className="block font-medium text-primary">ADMIN</span><span className="block text-xs text-muted-foreground">admin@local.test</span></span></Button>
             </div>
           </div>
 
-          <div className="text-center text-xs text-slate-400">
-            <Link href="/" className="hover:text-purple-300 underline underline-offset-4">
-              Kembali ke Beranda Demo
-            </Link>
-          </div>
+          <p className="text-center text-xs text-muted-foreground"><Link href="/" className="underline underline-offset-4 hover:text-primary">Kembali ke Beranda</Link></p>
         </CardContent>
       </Card>
-    </div>
-  );
+    </main>
+  )
 }

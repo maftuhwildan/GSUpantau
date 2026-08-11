@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { useWebSocket } from '@/components/layout/ws-provider';
 
 export default function OperatorSensorActivityPage() {
@@ -52,7 +53,7 @@ export default function OperatorSensorActivityPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-xs">
         <div>
           <h1 className="text-xl font-bold text-foreground">Aktivitas Sensor (Operator)</h1>
           <p className="text-xs text-muted-foreground mt-1">
@@ -100,15 +101,15 @@ export default function OperatorSensorActivityPage() {
                     <TableRow key={evt.id}>
                       <TableCell className="text-xs">{new Date(evt.deviceTime).toLocaleString()}</TableCell>
                       <TableCell className="text-xs">
-                        <Badge variant={evt.eventType === 'DETECTION' ? 'default' : 'outline'} className={evt.eventType === 'DETECTION' ? 'bg-purple-600' : ''}>
+                        <Badge variant={evt.eventType === 'DETECTION' ? 'default' : 'outline'}>
                           {evt.eventType}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-xs">
                         {evt.eventType === 'DETECTION' && (
-                          <Badge variant={evt.assignmentStatus === 'ASSIGNED' ? 'success' : 'destructive'}>
+                          <StatusBadge tone={evt.assignmentStatus === 'ASSIGNED' ? 'success' : 'danger'}>
                             {evt.assignmentStatus}
-                          </Badge>
+                          </StatusBadge>
                         )}
                         {evt.eventType !== 'DETECTION' && <span className="text-muted-foreground">-</span>}
                       </TableCell>

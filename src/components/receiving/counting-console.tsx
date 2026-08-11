@@ -15,6 +15,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -183,30 +186,30 @@ export function CountingConsole({
       )}
 
       {/* Main Console Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
         {/* Left 2 Columns: Counter Display & Finish SOP */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-purple-300 dark:border-purple-900 shadow-lg">
-            <CardHeader className="bg-slate-900 text-white rounded-t-xl">
+          <Card className="shadow-lg ring-1 ring-primary/15">
+            <CardHeader className="rounded-t-[inherit] bg-foreground text-background">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-lg bg-purple-600 shrink-0">
-                    <Truck className="h-6 w-6 text-white" />
+                  <div className="shrink-0 rounded-xl bg-primary p-2.5 text-primary-foreground">
+                    <Truck className="h-6 w-6" />
                   </div>
                   <div>
                     <CardTitle className="text-lg font-bold">
                       Truck: {receiving?.licensePlateSnapshot || '-'}
                     </CardTitle>
-                    <CardDescription className="text-xs text-slate-300">
+                    <CardDescription className="text-xs text-background/70">
                       Surat Jalan: {receiving?.deliveryNoteNumber || '-'} • Line: {session.lineName || session.lineCode || 'Line 01'}
                     </CardDescription>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Badge variant="warning" className="animate-pulse">
+                  <StatusBadge tone="warning" className="animate-pulse">
                     COUNTING
-                  </Badge>
+                  </StatusBadge>
                   {isAdmin && (
                     <Button
                       variant="ghost"
@@ -223,28 +226,28 @@ export function CountingConsole({
 
             <CardContent className="p-6 space-y-6">
               {/* Realtime Counter Comparison */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
                 {/* Target Manifest Box */}
-                <div className="p-6 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-1">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <div className="space-y-1 rounded-2xl border bg-muted/60 p-5 text-center sm:p-6">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Target Manifest (Surat Jalan)
                   </span>
-                  <div className="text-5xl font-black text-slate-800 dark:text-slate-100">
+                  <div className="font-heading text-4xl font-black text-foreground sm:text-5xl">
                     {manifest.toLocaleString('id-ID')}
                   </div>
-                  <span className="text-xs text-slate-500">Ekor Ayam</span>
+                  <span className="text-xs text-muted-foreground">Ekor Ayam</span>
                 </div>
 
                 {/* Actual Sensor Box */}
-                <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-700 to-pink-700 text-white text-center space-y-1 shadow-md relative overflow-hidden">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-purple-200 flex items-center justify-center gap-1">
-                    <Radio className="h-3.5 w-3.5 animate-pulse text-pink-300" />
+                <div className="relative space-y-1 overflow-hidden rounded-2xl bg-primary p-5 text-center text-primary-foreground shadow-md sm:p-6">
+                  <span className="flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wider text-primary-foreground/80">
+                    <Radio className="h-3.5 w-3.5 animate-pulse" />
                     Actual Hitung Sensor
                   </span>
-                  <div className="text-5xl font-black tracking-tight">
+                  <div className="font-heading text-4xl font-black tracking-tight sm:text-5xl">
                     {actual.toLocaleString('id-ID')}
                   </div>
-                  <span className="text-xs text-purple-200 flex items-center justify-center gap-1">
+                  <span className="flex items-center justify-center gap-1 text-xs text-primary-foreground/80">
                     <Clock className="h-3.5 w-3.5" />
                     {session.lastDetection
                       ? `Terakhir: ${new Date(session.lastDetection.receivedAt!).toLocaleTimeString('id-ID')}`
@@ -254,12 +257,12 @@ export function CountingConsole({
               </div>
 
               {/* Progress & Variance Indicator */}
-              <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex items-center justify-between">
+              <div className="flex items-center justify-between rounded-xl border border-warning/25 bg-warning/10 p-4">
                 <div>
-                  <p className="text-xs text-amber-800 dark:text-amber-400 font-semibold">
+                  <p className="text-xs font-semibold text-warning-foreground">
                     Selisih Berjalan (Variance):
                   </p>
-                  <p className="text-2xl font-extrabold text-amber-900 dark:text-amber-300">
+                  <p className="text-2xl font-extrabold text-warning-foreground">
                     {difference > 0 ? `+${difference.toLocaleString('id-ID')}` : difference.toLocaleString('id-ID')}{' '}
                     ekor{' '}
                     {diffPercent !== null && (
@@ -269,7 +272,7 @@ export function CountingConsole({
                     )}
                   </p>
                 </div>
-                <Badge variant="warning">BELUM SELESAI</Badge>
+                <StatusBadge tone="warning">BELUM SELESAI</StatusBadge>
               </div>
 
               {/* Critical SOP Warning Box */}
@@ -301,11 +304,11 @@ export function CountingConsole({
               )}
 
               {/* Primary Finish Button */}
-              <div className="pt-2">
+              <div className="hidden pt-2 md:block">
                 <Button
                   onClick={() => setShowFinishDialog(true)}
                   disabled={submitting}
-                  className="w-full h-12 bg-rose-600 hover:bg-rose-500 text-white font-bold text-base gap-2 shadow-lg"
+                  className="h-12 w-full gap-2 text-base font-bold shadow-lg"
                 >
                   <Square className="h-5 w-5 fill-current" />
                   <span>SELESAIKAN COUNTING TRUCK INI</span>
@@ -397,6 +400,17 @@ export function CountingConsole({
         </div>
       </div>
 
+      <div className="safe-area-bottom fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 backdrop-blur-sm md:hidden">
+        <Button
+          onClick={() => setShowFinishDialog(true)}
+          disabled={submitting}
+          className="h-12 w-full gap-2 font-bold shadow-lg"
+        >
+          <Square className="fill-current" />
+          Selesaikan Counting
+        </Button>
+      </div>
+
       {/* Dialog Konfirmasi Penyelesaian */}
       <Dialog open={showFinishDialog} onOpenChange={setShowFinishDialog}>
         <DialogContent className="sm:max-w-md">
@@ -468,11 +482,12 @@ export function CountingConsole({
           </DialogHeader>
 
           <div className="space-y-3 my-2 text-xs">
-            <label className="font-semibold text-foreground">
+            <Label htmlFor="cancel-counting-reason" className="font-semibold text-foreground">
               Alasan Pembatalan <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              className="w-full h-24 p-2 rounded-md border border-input bg-background text-xs"
+            </Label>
+            <Textarea
+              id="cancel-counting-reason"
+              className="min-h-24 text-xs"
               placeholder="Contoh: Kesalahan pemilihan jalur atau truk fisik belum tiba"
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}

@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { QueueTable, ReceivingData } from '@/components/receiving/queue-table';
 import { StartCountingDialog } from '@/components/receiving/start-counting-dialog';
 import { useWebSocket } from '@/components/layout/ws-provider';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { StatusBadge } from '@/components/ui/status-badge';
 
 export default function OperatorReceivingQueuePage() {
   const [receivings, setReceivings] = useState<ReceivingData[]>([]);
@@ -72,23 +74,12 @@ export default function OperatorReceivingQueuePage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-sm">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Antrean Surat Jalan (Receiving Queue)</h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Pilih truck dari daftar antrean yang telah diterbitkan (WAITING) oleh Admin untuk mulai proses penghitungan.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <PageHeader title="Antrean Surat Jalan" description="Pilih truck berstatus WAITING yang telah diterbitkan Admin untuk mulai proses penghitungan." actions={<>
           <Button variant="outline" size="sm" onClick={fetchQueue} className="text-xs gap-1">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
-          <Badge variant="outline" className="text-purple-700 bg-purple-50">
-            Jalur Operasional Active
-          </Badge>
-        </div>
-      </div>
+          <StatusBadge tone="success">Jalur Operasional Aktif</StatusBadge>
+        </>} />
 
       {/* Operator Restrictions Banner */}
       <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 flex items-start gap-3 text-xs text-amber-900 dark:text-amber-300">

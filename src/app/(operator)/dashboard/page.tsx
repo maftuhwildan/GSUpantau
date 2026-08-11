@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { useWebSocket } from '@/components/layout/ws-provider';
 
 type DashboardData = {
@@ -101,15 +102,15 @@ export default function OperatorDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Top Banner / Line Context */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-xs">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-foreground">
               Dashboard Operator • {data.line?.name || 'Belum ada Line'}
             </h1>
-            <Badge variant={data.activeSession ? 'success' : 'secondary'}>
+            <StatusBadge tone={data.activeSession ? 'success' : 'neutral'}>
               {data.activeSession ? 'Sesi Aktif' : 'IDLE'}
-            </Badge>
+            </StatusBadge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             Pantau status penghitungan truck penerimaan ayam secara realtime.
@@ -137,7 +138,7 @@ export default function OperatorDashboardPage() {
 
       {/* Primary Active Session Highlight */}
       {data.activeSession ? (
-        <Card className="border-purple-200 dark:border-purple-900/50 bg-gradient-to-br from-white via-purple-50/30 to-pink-50/20 dark:from-card dark:to-purple-950/20 shadow-md">
+        <Card className="border-purple-200 dark:border-purple-900/50 bg-linear-to-br from-white via-purple-50/30 to-pink-50/20 dark:from-card dark:to-purple-950/20 shadow-md">
           <CardHeader className="pb-3 border-b border-purple-100 dark:border-purple-900/30">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -153,15 +154,15 @@ export default function OperatorDashboardPage() {
                   </CardDescription>
                 </div>
               </div>
-              <Badge variant="warning" className="animate-pulse">
+              <StatusBadge tone="warning" className="animate-pulse">
                 COUNTING
-              </Badge>
+              </StatusBadge>
             </div>
           </CardHeader>
 
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 rounded-xl bg-white dark:bg-card border border-border shadow-sm">
+              <div className="p-4 rounded-xl bg-white dark:bg-card border border-border shadow-xs">
                 <p className="text-xs font-medium text-muted-foreground">Manifest (Surat Jalan)</p>
                 <p className="text-3xl font-extrabold text-foreground mt-1">
                   {data.activeSession.receiving?.manifestCount.toLocaleString()}
@@ -185,7 +186,7 @@ export default function OperatorDashboardPage() {
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl bg-white dark:bg-card border border-border shadow-sm">
+              <div className="p-4 rounded-xl bg-white dark:bg-card border border-border shadow-xs">
                 <p className="text-xs font-medium text-muted-foreground">Selisih Sementara</p>
                 <p className="text-3xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">
                   {((data.activeSession.actualCount || 0) - (data.activeSession.receiving?.manifestCount || 0)).toLocaleString()}
@@ -195,7 +196,7 @@ export default function OperatorDashboardPage() {
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl bg-white dark:bg-card border border-border shadow-sm flex flex-col justify-between">
+              <div className="p-4 rounded-xl bg-white dark:bg-card border border-border shadow-xs flex flex-col justify-between">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Status Sensor Line</p>
                   <div className="flex items-center gap-2 mt-2">
