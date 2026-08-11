@@ -5,13 +5,16 @@ import { History, RefreshCw, AlertCircle, Eye, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useWebSocket } from '@/components/layout/ws-provider';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { DateRangePicker, type DateOnlyRange } from '@/components/ui/date-picker';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { appendDateRangeParams } from '@/lib/ui-date';
 
 export default function AdminAuditTrailPage() {
   const [logs, setLogs] = useState<any[]>([]);
@@ -24,8 +27,7 @@ export default function AdminAuditTrailPage() {
   const [actionFilter, setActionFilter] = useState('ALL');
   const [entityFilter, setEntityFilter] = useState('ALL');
   const [actorFilter, setActorFilter] = useState('ALL');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateRange, setDateRange] = useState<DateOnlyRange>({});
 
   // Selected Log for Detail Modal
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
@@ -52,8 +54,7 @@ export default function AdminAuditTrailPage() {
       if (actionFilter && actionFilter !== 'ALL') params.append('action', actionFilter);
       if (entityFilter && entityFilter !== 'ALL') params.append('entity_type', entityFilter);
       if (actorFilter && actorFilter !== 'ALL') params.append('actor_id', actorFilter);
-      if (dateFrom) params.append('date_from', dateFrom);
-      if (dateTo) params.append('date_to', dateTo);
+      appendDateRangeParams(params, dateRange);
 
       const res = await fetch(`/api/audit-logs?${params.toString()}`);
       const result = await res.json();
@@ -66,7 +67,7 @@ export default function AdminAuditTrailPage() {
     } finally {
       setLoading(false);
     }
-  }, [actionFilter, entityFilter, actorFilter, dateFrom, dateTo]);
+  }, [actionFilter, entityFilter, actorFilter, dateRange]);
 
   useEffect(() => {
     fetchUsers();
@@ -93,8 +94,7 @@ export default function AdminAuditTrailPage() {
     setActionFilter('ALL');
     setEntityFilter('ALL');
     setActorFilter('ALL');
-    setDateFrom('');
-    setDateTo('');
+    setDateRange({});
   };
 
   return (
@@ -106,16 +106,16 @@ export default function AdminAuditTrailPage() {
       } />
 
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs flex items-center gap-2">
+        <Alert variant="destructive">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{errorMsg}</span>
-        </div>
+          <AlertDescription>{errorMsg}</AlertDescription>
+        </Alert>
       )}
 
       {/* Interactive Filters */}
       <Card className="border-border p-4">
         <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <Label htmlFor="audit-action">Aksi (Action)</Label>
               <Select value={actionFilter} onValueChange={setActionFilter}><SelectTrigger id="audit-action" className="w-full"><SelectValue /></SelectTrigger><SelectContent>
@@ -143,24 +143,12 @@ export default function AdminAuditTrailPage() {
             </div>
 
             <div>
-              <Label htmlFor="audit-date-from">Dari Waktu</Label>
-              <Input
-                id="audit-date-from"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="h-9 text-xs"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="audit-date-to">Sampai Waktu</Label>
-              <Input
-                id="audit-date-to"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="h-9 text-xs"
+              <Label htmlFor="audit-date-range">Rentang Waktu</Label>
+              <DateRangePicker
+                id="audit-date-range"
+                value={dateRange}
+                onValueChange={setDateRange}
+                disabled={loading}
               />
             </div>
           </div>
@@ -188,7 +176,7 @@ export default function AdminAuditTrailPage() {
         <CardContent>
           <div className="rounded-md border border-border overflow-hidden">
             <Table>
-              <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
+              <TableHeader className="bg-muted ">
                 <TableRow>
                   <TableHead className="text-xs w-[150px]">Waktu</TableHead>
                   <TableHead className="text-xs">Aktor</TableHead>
@@ -216,9 +204,9 @@ export default function AdminAuditTrailPage() {
                         <div className="text-[10px] text-muted-foreground">{log.actorRole || log.source}</div>
                       </TableCell>
                       <TableCell className="text-xs">
-                        <Badge variant="outline" className="text-[10px] font-mono bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200">
+                        <StatusBadge tone="primary" className="text-[10px] font-mono">
                           {log.action}
-                        </Badge>
+                        </StatusBadge>
                       </TableCell>
                       <TableCell className="text-xs">
                         <span className="font-medium text-foreground">{log.entityType}</span> <br/>
@@ -235,7 +223,7 @@ export default function AdminAuditTrailPage() {
                           className="h-7 w-7 p-0"
                           title="Lihat Detail Before / After"
                         >
-                          <Eye className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
+                          <Eye className="h-3.5 w-3.5 text-muted-foreground " />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -252,7 +240,7 @@ export default function AdminAuditTrailPage() {
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <History className="h-4 w-4 text-purple-600" />
+              <History className="h-4 w-4 text-primary" />
               Detail Audit Log: {selectedLog?.action}
             </DialogTitle>
             <DialogDescription className="text-xs pt-1">
@@ -262,7 +250,7 @@ export default function AdminAuditTrailPage() {
           </DialogHeader>
 
           <div className="space-y-4 my-2 text-xs">
-            <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border text-xs">
+            <div className="grid grid-cols-2 gap-2 p-3 bg-muted  rounded-lg border text-xs">
               <div>
                 <span className="text-muted-foreground font-semibold">Aktor:</span>{' '}
                 <span className="font-medium text-foreground">{selectedLog?.actor?.name || 'Sistem'}</span>
@@ -280,28 +268,28 @@ export default function AdminAuditTrailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Before Data */}
               <div className="space-y-1.5">
-                <label className="font-semibold text-slate-700 dark:text-slate-300 block">
+                <p className="font-semibold text-muted-foreground">
                   Data Sebelum (Before)
-                </label>
-                <div className="p-3 bg-slate-950 text-slate-100 rounded-lg text-[11px] font-mono overflow-x-auto max-h-60 border">
+                </p>
+                <div className="p-3 bg-foreground text-muted-foreground rounded-lg text-[11px] font-mono overflow-x-auto max-h-60 border">
                   {selectedLog?.beforeData ? (
                     <pre>{JSON.stringify(selectedLog.beforeData, null, 2)}</pre>
                   ) : (
-                    <span className="text-slate-500 italic">Data kosong (Aksi Pembuatan Baru)</span>
+                    <span className="text-muted-foreground italic">Data kosong (Aksi Pembuatan Baru)</span>
                   )}
                 </div>
               </div>
 
               {/* After Data */}
               <div className="space-y-1.5">
-                <label className="font-semibold text-slate-700 dark:text-slate-300 block">
+                <p className="font-semibold text-muted-foreground">
                   Data Sesudah (After)
-                </label>
-                <div className="p-3 bg-slate-950 text-slate-100 rounded-lg text-[11px] font-mono overflow-x-auto max-h-60 border">
+                </p>
+                <div className="p-3 bg-foreground text-muted-foreground rounded-lg text-[11px] font-mono overflow-x-auto max-h-60 border">
                   {selectedLog?.afterData ? (
                     <pre>{JSON.stringify(selectedLog.afterData, null, 2)}</pre>
                   ) : (
-                    <span className="text-slate-500 italic">Data kosong (Aksi Penghapusan/Pembatalan)</span>
+                    <span className="text-muted-foreground italic">Data kosong (Aksi Penghapusan/Pembatalan)</span>
                   )}
                 </div>
               </div>

@@ -20,7 +20,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { getActiveLineChartData } from '@/lib/chart-data';
+import { KpiCard } from '@/components/dashboard/KpiCard';
 import { useWebSocket } from '@/components/layout/ws-provider';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+
+const activeLineChartConfig = {
+  manifest: { label: 'Manifest', color: 'var(--metric-manifest)' },
+  actual: { label: 'Actual', color: 'var(--metric-actual)' },
+} satisfies ChartConfig;
 
 export default function AdminDashboardPage() {
   const [data, setData] = useState<any>(null);
@@ -70,24 +80,25 @@ export default function AdminDashboardPage() {
   }, [lastMessage, fetchDashboard]);
 
   if (loading && !data) {
-    return <div className="p-6 text-center text-muted-foreground"><RefreshCw className="h-6 w-6 animate-spin mx-auto" /></div>;
+    return <LoadingState label="Memuat dashboard Admin" rows={4} />;
   }
 
   if (errorMsg) {
-    return <div className="p-6 text-center text-red-600 font-medium">{errorMsg}</div>;
+    return <ErrorState description={errorMsg} onRetry={fetchDashboard} />;
   }
 
   if (!data) return null;
 
   const deviceStatusClass = (status?: string) => {
-    if (status === 'ONLINE') return 'text-emerald-700 dark:text-emerald-400';
-    if (status === 'DEGRADED') return 'text-amber-700 dark:text-amber-400';
-    return 'text-red-700 dark:text-red-400';
+    if (status === 'ONLINE') return 'text-device-online';
+    if (status === 'DEGRADED') return 'text-device-degraded';
+    if (status === 'OFFLINE') return 'text-device-offline';
+    return 'text-device-unknown';
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background dark:bg-card p-6 rounded-xl border border-border shadow-xs">
         <div>
           <h1 className="text-xl font-bold text-foreground">Dashboard Administrator</h1>
           <p className="text-xs text-muted-foreground mt-1">
@@ -96,16 +107,16 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button asChild className="bg-purple-600 hover:bg-purple-500 gap-1.5 text-xs">
+          <Button asChild className="bg-primary hover:bg-primary gap-1.5 text-xs">
             <Link href="/admin/receiving">
               <PlusCircle className="h-4 w-4" />
               <span>Input Surat Jalan Baru</span>
             </Link>
           </Button>
 
-          <Button variant="outline" asChild className="gap-1.5 text-xs border-purple-300">
+          <Button variant="outline" asChild className="gap-1.5 text-xs border-primary/25">
             <Link href="/admin/counting">
-              <Play className="h-4 w-4 text-purple-600" />
+              <Play className="h-4 w-4 text-primary" />
               <span>Buka Console Counting</span>
             </Link>
           </Button>
@@ -113,61 +124,35 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-border">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">Total Manifest Hari Ini</p>
-              <p className="text-2xl font-bold text-foreground mt-1">{(data.totalManifestToday || 0).toLocaleString()}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-400">
-              <FileText className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">Actual Selesai Hari Ini</p>
-              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{(data.actualCompletedToday || 0).toLocaleString()}</p>
-              <p className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 mt-0.5">{data.completedReceivingCount || 0} Truck Selesai</p>
-            </div>
-            <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">Selisih Akhir (Final)</p>
-              <p className={`text-2xl font-bold mt-1 ${data.finalDifferenceCount < 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                {data.finalDifferenceCount > 0 ? '+' : ''}{data.finalDifferenceCount.toLocaleString()}
-              </p>
-              <p className={`text-[10px] mt-0.5 flex items-center gap-1 ${data.finalDifferencePercent < 0 ? 'text-amber-700/80 dark:text-amber-400/80' : 'text-emerald-700/80 dark:text-emerald-400/80'}`}>
-                <TrendingDown className="h-3 w-3" /> {data.finalDifferencePercent}% Variance
-              </p>
-            </div>
-            <div className={`p-3 rounded-xl ${data.finalDifferenceCount < 0 ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400' : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400'}`}>
-              <AlertTriangle className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">Status Line Aktif</p>
-              <p className="text-2xl font-bold text-purple-700 dark:text-purple-400 mt-1">{data.activeLinesCount} / {data.linesOverview?.length || 0} Line</p>
-              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">Antrean: {data.waitingQueueCount} Truck</p>
-            </div>
-            <div className="p-3 rounded-xl bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-400">
-              <Activity className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
+        <KpiCard label="Total Manifest Hari Ini" value={(data.totalManifestToday || 0).toLocaleString('id-ID')} icon={FileText} />
+        <KpiCard label="Actual Selesai Hari Ini" value={(data.actualCompletedToday || 0).toLocaleString('id-ID')} detail={`${data.completedReceivingCount || 0} Truck Selesai`} icon={CheckCircle2} tone="success" />
+        <KpiCard label="Selisih Akhir (Final)" value={`${data.finalDifferenceCount > 0 ? '+' : ''}${data.finalDifferenceCount.toLocaleString('id-ID')}`} detail={`${data.finalDifferencePercent}% Variance`} icon={AlertTriangle} tone={data.finalDifferenceCount < 0 ? 'warning' : 'success'} />
+        <KpiCard label="Status Line Aktif" value={`${data.activeLinesCount} / ${data.linesOverview?.length || 0} Line`} detail={`Antrean: ${data.waitingQueueCount} Truck`} icon={Activity} tone="info" />
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Perbandingan Sesi Aktif per Line</CardTitle>
+          <CardDescription>Manifest dan actual sensor dari sesi yang sedang berjalan.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {getActiveLineChartData(data.linesOverview).length === 0 ? (
+            <EmptyState icon={Activity} title="Belum ada sesi aktif" description="Chart akan muncul ketika counting dimulai pada salah satu line." />
+          ) : (
+            <ChartContainer config={activeLineChartConfig} className="h-[260px] w-full">
+              <BarChart accessibilityLayer data={getActiveLineChartData(data.linesOverview)} margin={{ left: 8, right: 8 }}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="line" tickLine={false} axisLine={false} />
+                <YAxis tickLine={false} axisLine={false} width={44} />
+                <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                <ChartLegend content={<ChartLegendContent />} />
+                <Bar dataKey="manifest" fill="var(--color-manifest)" radius={4} />
+                <Bar dataKey="actual" fill="var(--color-actual)" radius={4} />
+              </BarChart>
+            </ChartContainer>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
@@ -180,14 +165,14 @@ export default function AdminDashboardPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {data.linesOverview?.map((item: any) => (
-                <div key={item.line.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
+                <div key={item.line.id} className="p-4 rounded-xl bg-muted  border border-border  space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-foreground text-sm">{item.line.name}</span>
                       {item.activeSession ? (
                         <StatusBadge tone="warning" className="animate-pulse text-[10px]">COUNTING</StatusBadge>
                       ) : (
-                        <Badge variant="secondary" className="text-[10px]">IDLE</Badge>
+                        <StatusBadge tone="neutral" className="text-[10px]">IDLE</StatusBadge>
                       )}
                     </div>
                     <span className="text-xs text-muted-foreground text-right">
@@ -215,7 +200,7 @@ export default function AdminDashboardPage() {
                     <div className="grid grid-cols-3 gap-2 text-xs mt-2">
                       <div>
                         <span className="text-muted-foreground">Truck Aktif:</span>
-                        <p className="font-bold text-purple-700 dark:text-purple-400">{item.activeSession.receiving?.licensePlateSnapshot}</p>
+                        <p className="font-bold text-primary ">{item.activeSession.receiving?.licensePlateSnapshot}</p>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Manifest:</span>
@@ -223,7 +208,7 @@ export default function AdminDashboardPage() {
                       </div>
                       <div>
                         <span className="text-muted-foreground">Actual Sensor:</span>
-                        <p className="font-bold text-emerald-600 dark:text-emerald-400">{(item.activeSession.actualCount || 0).toLocaleString()} ekor</p>
+                        <p className="font-bold text-success ">{(item.activeSession.actualCount || 0).toLocaleString()} ekor</p>
                       </div>
                     </div>
                   ) : (
@@ -239,7 +224,7 @@ export default function AdminDashboardPage() {
           <Card className="border-border">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <History className="h-4 w-4 text-purple-600" />
+                <History className="h-4 w-4 text-primary" />
                 <span>Audit Trail Terbaru</span>
               </CardTitle>
               <CardDescription className="text-xs">
@@ -252,10 +237,10 @@ export default function AdminDashboardPage() {
                   <p className="text-muted-foreground italic text-center py-4">Belum ada log audit.</p>
                 ) : (
                   data.recentAuditLogs?.map((log: any) => (
-                    <div key={log.id} className="p-2.5 rounded bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
+                    <div key={log.id} className="p-2.5 rounded bg-muted  border border-border  space-y-1">
                       <div className="flex justify-between items-center text-[11px]">
-                        <span className="font-semibold text-purple-700 dark:text-purple-400">{log.action}</span>
-                        <span className="text-slate-400">{new Date(log.createdAt).toLocaleTimeString()}</span>
+                        <span className="font-semibold text-primary ">{log.action}</span>
+                        <span className="text-muted-foreground">{new Date(log.createdAt).toLocaleTimeString()}</span>
                       </div>
                       <p className="text-foreground font-medium">{log.entityType} ({log.entityId.substring(0,8)}...)</p>
                       <p className="text-[10px] text-muted-foreground">Oleh: {log.actor?.email || 'System'}</p>
@@ -264,7 +249,7 @@ export default function AdminDashboardPage() {
                 )}
               </div>
 
-              <Button variant="ghost" size="sm" asChild className="w-full mt-4 text-xs gap-1 text-purple-600">
+              <Button variant="ghost" size="sm" asChild className="w-full mt-4 text-xs gap-1 text-primary">
                 <Link href="/admin/audit-trail">
                   <span>Lihat Semua Audit Log</span>
                   <ArrowRight className="h-3.5 w-3.5" />

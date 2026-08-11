@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LoadingState } from "@/components/ui/states";
 
 export default function AdminSettingsPage() {
   const [siteName, setSiteName] = useState("Poultry Receiving Counter System - RPA Jaya Abadi");
@@ -92,7 +94,7 @@ export default function AdminSettingsPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-background dark:bg-card p-6 rounded-xl border border-border shadow-xs">
           <div>
             <h1 className="text-xl font-bold text-foreground">Pengaturan Sistem (Site Settings)</h1>
             <p className="text-xs text-muted-foreground mt-1">
@@ -113,7 +115,7 @@ export default function AdminSettingsPage() {
             <Button
               type="submit"
               disabled={submitting || loading}
-              className="bg-purple-600 hover:bg-purple-500 text-white text-xs gap-1.5"
+              className="bg-primary hover:bg-primary text-primary-foreground text-xs gap-1.5"
             >
               <Save className="h-4 w-4" />
               <span>{submitting ? "Menyimpan..." : "Simpan Perubahan"}</span>
@@ -122,29 +124,27 @@ export default function AdminSettingsPage() {
         </div>
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 p-4 rounded-xl text-xs flex items-center gap-2">
+          <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4 shrink-0" />
-            <span>{error}</span>
-          </div>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
         {successMessage && (
-          <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 p-4 rounded-xl text-xs flex items-center gap-2">
+          <Alert variant="success">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
-            <span>{successMessage}</span>
-          </div>
+            <AlertDescription>{successMessage}</AlertDescription>
+          </Alert>
         )}
 
         {loading ? (
-          <Card className="border-border p-8 text-center text-xs text-muted-foreground">
-            Memuat pengaturan sistem...
-          </Card>
+          <LoadingState label="Memuat pengaturan sistem" rows={4} />
         ) : (
           <>
             <Card className="border-border">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-purple-600" />
+                  <Globe className="h-4 w-4 text-primary" />
                   <span>Pengaturan Umum Site</span>
                 </CardTitle>
                 <CardDescription className="text-xs">Parameter operasional utama RPA</CardDescription>
@@ -164,7 +164,7 @@ export default function AdminSettingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="settings-timezone" className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5 text-purple-600" /> Site Timezone
+                      <Clock className="h-3.5 w-3.5 text-primary" /> Site Timezone
                     </Label>
                     <Input
                       id="settings-timezone"
@@ -196,7 +196,7 @@ export default function AdminSettingsPage() {
             <Card className="border-border">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <ShieldAlert className="h-4 w-4 text-purple-600" />
+                  <ShieldAlert className="h-4 w-4 text-primary" />
                   <span>Threshold Sinyal Sensor ESP32</span>
                 </CardTitle>
                 <CardDescription className="text-xs">
@@ -240,7 +240,7 @@ export default function AdminSettingsPage() {
 
                 <div className="pt-2 border-t border-border space-y-1.5">
                   <Label htmlFor="settings-batch-size" className="flex items-center gap-1">
-                    <Cpu className="h-3.5 w-3.5 text-purple-600" />
+                    <Cpu className="h-3.5 w-3.5 text-primary" />
                     <span>Device Batch Upload Max Events</span>
                   </Label>
                   <Input

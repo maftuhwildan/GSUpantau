@@ -19,6 +19,9 @@ import { Badge } from '@/components/ui/badge';
 import { StatusBadge as UiStatusBadge } from '@/components/ui/status-badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
@@ -94,7 +97,7 @@ function SectionHeader({
   return (
     <div className="flex items-center justify-between mb-3">
       <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-purple-600" />
+        <Icon className="h-4 w-4 text-primary" />
         <div>
           <p className="text-sm font-semibold text-foreground">{title}</p>
           <p className="text-xs text-muted-foreground">{description}</p>
@@ -127,8 +130,10 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 
 function LoadingState() {
   return (
-    <div className="flex justify-center items-center py-10">
-      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+    <div className="space-y-3 p-4" role="status" aria-label="Memuat data" aria-busy="true">
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-12 w-3/4" />
     </div>
   );
 }
@@ -295,16 +300,14 @@ function TrucksSection() {
               className="pl-8 h-8 text-xs"
             />
           </div>
-          <select
-            id="trucks-status-filter"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')}
-            className="h-8 text-xs border border-input rounded-md px-2 bg-background"
-          >
-            <option value="ALL">Semua</option>
-            <option value="ACTIVE">Aktif</option>
-            <option value="INACTIVE">Nonaktif</option>
-          </select>
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'ALL' | 'ACTIVE' | 'INACTIVE')}>
+            <SelectTrigger id="trucks-status-filter" size="sm" className="w-28"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Semua</SelectItem>
+              <SelectItem value="ACTIVE">Aktif</SelectItem>
+              <SelectItem value="INACTIVE">Nonaktif</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -327,7 +330,7 @@ function TrucksSection() {
             <TableBody>
               {trucks.map((truck) => (
                 <TableRow key={truck.id}>
-                  <TableCell className="text-xs font-bold text-purple-700 dark:text-purple-400">
+                  <TableCell className="text-xs font-bold text-primary ">
                     {truck.licensePlate}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
@@ -354,7 +357,7 @@ function TrucksSection() {
                         onClick={() => handleToggleStatus(truck)}
                         title={truck.status === 'ACTIVE' ? 'Nonaktifkan' : 'Aktifkan'}
                       >
-                        <Power className={`h-3 w-3 ${truck.status === 'ACTIVE' ? 'text-green-600' : 'text-slate-400'}`} />
+                        <Power className={`h-3 w-3 ${truck.status === 'ACTIVE' ? 'text-success' : 'text-muted-foreground'}`} />
                       </Button>
                     </div>
                   </TableCell>
@@ -376,10 +379,10 @@ function TrucksSection() {
         </DialogHeader>
         <div className="space-y-4">
           {formError && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-xs">
+            <Alert variant="destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{formError}</span>
-            </div>
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
           )}
           <FormField label="Plat Nomor" htmlFor="truck-form-license-plate" required>
             <Input
@@ -561,16 +564,14 @@ function DriversSection() {
               className="pl-8 h-8 text-xs"
             />
           </div>
-          <select
-            id="drivers-status-filter"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')}
-            className="h-8 text-xs border border-input rounded-md px-2 bg-background"
-          >
-            <option value="ALL">Semua</option>
-            <option value="ACTIVE">Aktif</option>
-            <option value="INACTIVE">Nonaktif</option>
-          </select>
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'ALL' | 'ACTIVE' | 'INACTIVE')}>
+            <SelectTrigger id="drivers-status-filter" size="sm" className="w-28"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Semua</SelectItem>
+              <SelectItem value="ACTIVE">Aktif</SelectItem>
+              <SelectItem value="INACTIVE">Nonaktif</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -618,7 +619,7 @@ function DriversSection() {
                         onClick={() => handleToggleStatus(driver)}
                         title={driver.status === 'ACTIVE' ? 'Nonaktifkan' : 'Aktifkan'}
                       >
-                        <Power className={`h-3 w-3 ${driver.status === 'ACTIVE' ? 'text-green-600' : 'text-slate-400'}`} />
+                        <Power className={`h-3 w-3 ${driver.status === 'ACTIVE' ? 'text-success' : 'text-muted-foreground'}`} />
                       </Button>
                     </div>
                   </TableCell>
@@ -639,10 +640,10 @@ function DriversSection() {
         </DialogHeader>
         <div className="space-y-4">
           {formError && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-xs">
+            <Alert variant="destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{formError}</span>
-            </div>
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
           )}
           <FormField label="Nama Lengkap" htmlFor="driver-form-name" required>
             <Input
@@ -836,16 +837,14 @@ function SuppliersSection() {
               className="pl-8 h-8 text-xs"
             />
           </div>
-          <select
-            id="suppliers-status-filter"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')}
-            className="h-8 text-xs border border-input rounded-md px-2 bg-background"
-          >
-            <option value="ALL">Semua</option>
-            <option value="ACTIVE">Aktif</option>
-            <option value="INACTIVE">Nonaktif</option>
-          </select>
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'ALL' | 'ACTIVE' | 'INACTIVE')}>
+            <SelectTrigger id="suppliers-status-filter" size="sm" className="w-28"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Semua</SelectItem>
+              <SelectItem value="ACTIVE">Aktif</SelectItem>
+              <SelectItem value="INACTIVE">Nonaktif</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -869,7 +868,7 @@ function SuppliersSection() {
             <TableBody>
               {suppliers.map((supplier) => (
                 <TableRow key={supplier.id}>
-                  <TableCell className="text-xs font-bold text-purple-700 dark:text-purple-400">
+                  <TableCell className="text-xs font-bold text-primary ">
                     {supplier.code}
                   </TableCell>
                   <TableCell className="text-xs font-medium">{supplier.name}</TableCell>
@@ -895,7 +894,7 @@ function SuppliersSection() {
                         onClick={() => handleToggleStatus(supplier)}
                         title={supplier.status === 'ACTIVE' ? 'Nonaktifkan' : 'Aktifkan'}
                       >
-                        <Power className={`h-3 w-3 ${supplier.status === 'ACTIVE' ? 'text-green-600' : 'text-slate-400'}`} />
+                        <Power className={`h-3 w-3 ${supplier.status === 'ACTIVE' ? 'text-success' : 'text-muted-foreground'}`} />
                       </Button>
                     </div>
                   </TableCell>
@@ -916,10 +915,10 @@ function SuppliersSection() {
         </DialogHeader>
         <div className="space-y-4">
           {formError && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-xs">
+            <Alert variant="destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{formError}</span>
-            </div>
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
           )}
           <FormField label="Kode Supplier" htmlFor="supplier-form-code" required>
             <Input

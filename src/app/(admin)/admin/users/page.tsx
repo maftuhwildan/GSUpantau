@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 import { Users, UserPlus, ShieldCheck, UserCheck, KeyRound, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { LoadingState } from "@/components/ui/states";
 import {
   Dialog,
   DialogContent,
@@ -212,7 +215,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-background dark:bg-card p-6 rounded-xl border border-border shadow-xs">
         <div>
           <h1 className="text-xl font-bold text-foreground">Kelola Pengguna & Peran (User Management)</h1>
           <p className="text-xs text-muted-foreground mt-1">
@@ -224,7 +227,7 @@ export default function AdminUsersPage() {
             <RefreshCw className="h-3.5 w-3.5" />
             <span>Muat Ulang</span>
           </Button>
-          <Button onClick={handleOpenAdd} className="bg-purple-600 hover:bg-purple-500 text-white text-xs gap-1.5">
+          <Button onClick={handleOpenAdd} className="bg-primary hover:bg-primary text-primary-foreground text-xs gap-1.5">
             <UserPlus className="h-4 w-4" />
             <span>Tambah Pengguna Baru</span>
           </Button>
@@ -232,10 +235,10 @@ export default function AdminUsersPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 p-4 rounded-xl text-xs flex items-center gap-2">
+        <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4 shrink-0" />
-          <span>{error}</span>
-        </div>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       <Card className="border-border">
@@ -247,74 +250,74 @@ export default function AdminUsersPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="py-8 text-center text-xs text-muted-foreground">Memuat data pengguna...</div>
+            <LoadingState label="Memuat data pengguna" />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-100 dark:bg-slate-800 font-semibold border-b border-border">
-                  <tr>
-                    <th className="p-3">Nama Pengguna</th>
-                    <th className="p-3">Email Login</th>
-                    <th className="p-3 text-center">Peran MVP</th>
-                    <th className="p-3">Line Tugas</th>
-                    <th className="p-3 text-center">Status</th>
-                    <th className="p-3">Terakhir Login</th>
-                    <th className="p-3 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
+              <Table>
+                <TableHeader className="bg-muted">
+                  <TableRow>
+                    <TableHead>Nama Pengguna</TableHead>
+                    <TableHead>Email Login</TableHead>
+                    <TableHead className="text-center">Peran MVP</TableHead>
+                    <TableHead>Line Tugas</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                    <TableHead>Terakhir Login</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {users.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="p-6 text-center text-muted-foreground">
+                    <TableRow>
+                      <TableCell colSpan={7} className="p-6 text-center text-muted-foreground">
                         Belum ada data pengguna.
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     users.map((u) => {
                       const isAdmin = u.roles.includes("ADMIN");
                       return (
-                        <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
-                          <td className="p-3 font-semibold text-foreground">{u.name}</td>
-                          <td className="p-3 font-mono text-purple-700 dark:text-purple-400">{u.email}</td>
-                          <td className="p-3 text-center">
+                        <TableRow key={u.id}>
+                          <TableCell className="font-semibold text-foreground">{u.name}</TableCell>
+                          <TableCell className="font-mono text-primary">{u.email}</TableCell>
+                          <TableCell className="text-center">
                             {isAdmin ? (
-                              <Badge variant="default" className="bg-purple-600 text-[10px] gap-1">
+                              <StatusBadge tone="primary" className="text-[10px] gap-1">
                                 <ShieldCheck className="h-3 w-3" /> ADMIN
-                              </Badge>
+                              </StatusBadge>
                             ) : (
-                              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-300 text-[10px] gap-1">
+                              <StatusBadge tone="info" className="text-[10px] gap-1">
                                 <UserCheck className="h-3 w-3" /> OPERATOR
-                              </Badge>
+                              </StatusBadge>
                             )}
-                          </td>
-                          <td className="p-3 text-foreground">
+                          </TableCell>
+                          <TableCell className="text-foreground">
                             {isAdmin ? (
-                              <span className="text-slate-400 italic">Semua Line</span>
+                              <span className="text-muted-foreground italic">Semua Line</span>
                             ) : u.assignedLine ? (
-                              <span className="font-medium text-slate-700 dark:text-slate-300">
+                              <span className="font-medium text-muted-foreground ">
                                 {u.assignedLine.name} ({u.assignedLine.lineCode})
                               </span>
                             ) : (
-                              <span className="text-red-500 font-medium">Belum Ditugaskan</span>
+                              <span className="text-destructive font-medium">Belum Ditugaskan</span>
                             )}
-                          </td>
-                          <td className="p-3 text-center">
+                          </TableCell>
+                          <TableCell className="text-center">
                             {u.status === "ACTIVE" ? (
-                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 text-[10px]">
+                              <StatusBadge tone="success" className="text-[10px]">
                                 AKTIF
-                              </Badge>
+                              </StatusBadge>
                             ) : (
-                              <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-300 text-[10px]">
+                              <StatusBadge tone="neutral" className="text-[10px]">
                                 INAKTIF
-                              </Badge>
+                              </StatusBadge>
                             )}
-                          </td>
-                          <td className="p-3 text-slate-500">
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
                             {u.lastLoginAt
                               ? new Date(u.lastLoginAt).toLocaleString("id-ID")
                               : "Belum pernah"}
-                          </td>
-                          <td className="p-3 text-right">
+                          </TableCell>
+                          <TableCell className="text-right">
                             <Button
                               size="sm"
                               variant="outline"
@@ -323,13 +326,13 @@ export default function AdminUsersPage() {
                             >
                               Edit / Reset
                             </Button>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
@@ -347,9 +350,7 @@ export default function AdminUsersPage() {
 
           <form onSubmit={handleAddSubmit} className="space-y-4 text-xs mt-2">
             {addError && (
-              <div className="p-3 rounded-lg bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300 border border-red-200">
-                {addError}
-              </div>
+              <Alert variant="destructive"><AlertDescription>{addError}</AlertDescription></Alert>
             )}
 
             <div className="space-y-1">
@@ -430,7 +431,7 @@ export default function AdminUsersPage() {
               <Button
                 type="submit"
                 disabled={addSubmitting}
-                className="bg-purple-600 hover:bg-purple-500 text-white text-xs"
+                className="bg-primary hover:bg-primary text-primary-foreground text-xs"
               >
                 {addSubmitting ? "Menyimpan..." : "Simpan Pengguna"}
               </Button>
@@ -451,9 +452,7 @@ export default function AdminUsersPage() {
 
           <form onSubmit={handleEditSubmit} className="space-y-4 text-xs mt-2">
             {editError && (
-              <div className="p-3 rounded-lg bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300 border border-red-200">
-                {editError}
-              </div>
+              <Alert variant="destructive"><AlertDescription>{editError}</AlertDescription></Alert>
             )}
 
             <div className="space-y-1">
@@ -481,7 +480,7 @@ export default function AdminUsersPage() {
 
             <div className="space-y-1">
               <Label htmlFor="edit-user-password" className="flex items-center gap-1">
-                <KeyRound className="h-3.5 w-3.5 text-purple-600" />
+                <KeyRound className="h-3.5 w-3.5 text-primary" />
                 <span>Reset Password Baru (Opsional, min. 12 Karakter)</span>
               </Label>
               <Input
@@ -534,7 +533,7 @@ export default function AdminUsersPage() {
               <Button
                 type="submit"
                 disabled={editSubmitting}
-                className="bg-purple-600 hover:bg-purple-500 text-white text-xs"
+                className="bg-primary hover:bg-primary text-primary-foreground text-xs"
               >
                 {editSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
               </Button>
