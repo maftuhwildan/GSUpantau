@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Figtree } from "next/font/google";
 import "./globals.css";
+import { cn } from "@/lib/utils";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
-const inter = Inter({ subsets: ["latin"] });
+const figtree = Figtree({
+  subsets: ["latin"],
+  variable: "--font-figtree",
+});
 
 export const metadata: Metadata = {
   title: "Poultry Receiving Counter System - GSU Pantau",
@@ -16,8 +21,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id">
-      <body className={inter.className}>{children}</body>
+    <html lang="id" className={cn("font-sans", figtree.variable)}>
+      <body>
+        <TooltipProvider>{children}</TooltipProvider>
+      </body>
     </html>
   );
 }

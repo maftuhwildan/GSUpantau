@@ -1,94 +1,33 @@
-import Link from "next/link";
-import { Bird, ShieldCheck, UserCheck, ArrowRight, Activity } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link"
+import { Activity, ArrowRight, Bird, ShieldCheck, UserCheck } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-slate-900 text-white flex flex-col justify-between p-6 md:p-12 relative overflow-hidden">
-      {/* Background Glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[140px] pointer-events-none" />
-
-      {/* Top Header */}
-      <header className="flex items-center justify-between z-10">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-purple-600/30 border border-purple-400/30 backdrop-blur-md">
-            <Bird className="h-7 w-7 text-pink-400" />
-          </div>
-          <div>
-            <h1 className="font-bold text-lg tracking-wide text-white">GSU Pantau</h1>
-            <p className="text-xs text-purple-300/80">Poultry Receiving Counter System</p>
-          </div>
-        </div>
-        <Button variant="outline" asChild className="border-purple-400/40 text-purple-200 hover:bg-purple-900/50">
-          <Link href="/login">Masuk Sistem</Link>
-        </Button>
+    <div className="relative flex min-h-svh flex-col overflow-hidden bg-background">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-linear-to-b from-primary/10 via-primary/5 to-transparent" />
+      <header className="relative mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-6">
+        <div className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Bird /></span><div className="min-w-0"><h1 className="truncate font-heading font-semibold">GSU Pantau</h1><p className="truncate text-xs text-muted-foreground">Poultry Receiving Counter</p></div></div>
+        <Button asChild variant="outline" className="h-11"><Link href="/login">Masuk</Link></Button>
       </header>
 
-      {/* Hero Body */}
-      <main className="max-w-4xl mx-auto my-auto py-12 z-10 text-center space-y-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-900/60 border border-purple-500/40 text-xs font-medium text-purple-200">
-          <Activity className="h-3.5 w-3.5 text-pink-400 animate-pulse" />
-          <span>Sistem Penghitungan Ayam Otomatis RPA</span>
+      <main className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-4 py-12 sm:px-6 sm:py-20">
+        <div className="mx-auto max-w-3xl space-y-6 text-center">
+          <StatusBadge tone="primary" className="mx-auto"><Activity className="animate-pulse" /> Sistem Penghitungan Otomatis RPA</StatusBadge>
+          <h2 className="font-heading text-3xl font-bold tracking-tight sm:text-5xl">Rekonsiliasi manifest dan hasil sensor yang akurat, realtime, dan transparan.</h2>
+          <p className="mx-auto max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">Bandingkan jumlah ayam dari Surat Jalan dengan hitungan sensor ESP32 sebelum proses pemotongan, dalam satu alur operasional yang dapat diaudit.</p>
         </div>
-        <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
-          Rekonsiliasi Manifest & Hasil Hitung Sensor <br />
-          <span className="bg-gradient-to-r from-pink-400 via-purple-300 to-orange-400 bg-clip-text text-transparent">
-            Akurat, Realtime, dan Transparan
-          </span>
-        </h2>
-        <p className="text-slate-300 text-sm md:text-base max-w-2xl mx-auto leading-relaxed">
-          Membandingkan jumlah ekor ayam dari Surat Jalan (Manifest) dengan hitungan sensor ESP32 secara akurat sebelum proses pemotongan.
-        </p>
 
-        {/* Quick Portal Switch */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left pt-6">
-          <Card className="bg-slate-800/80 border-slate-700 text-white hover:border-emerald-500/50 transition-all shadow-xl">
-            <CardHeader>
-              <div className="p-2 w-fit rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 mb-2">
-                <UserCheck className="h-5 w-5" />
-              </div>
-              <CardTitle className="text-lg">Portal Operator</CardTitle>
-              <CardDescription className="text-slate-400 text-xs">
-                Akses khusus Operator lapangan untuk memulai, memantau, dan menyelesaikan penghitungan truck.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild className="w-full bg-emerald-600 hover:bg-emerald-500 text-white gap-2">
-                <Link href="/dashboard">
-                  <span>Buka Dashboard Operator</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-800/80 border-slate-700 text-white hover:border-purple-500/50 transition-all shadow-xl">
-            <CardHeader>
-              <div className="p-2 w-fit rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 mb-2">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-              <CardTitle className="text-lg">Portal Admin</CardTitle>
-              <CardDescription className="text-slate-400 text-xs">
-                Manajemen Surat Jalan, Master Data, Line & Perangkat ESP32, Laporan, dan Audit Trail.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild className="w-full bg-purple-600 hover:bg-purple-500 text-white gap-2">
-                <Link href="/admin/dashboard">
-                  <span>Buka Dashboard Admin</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+        <div className="mx-auto mt-10 grid w-full max-w-4xl gap-4 md:grid-cols-2">
+          <Card><CardHeader><span className="mb-2 flex size-10 items-center justify-center rounded-xl bg-success/10 text-success"><UserCheck /></span><CardTitle>Portal Operator</CardTitle><CardDescription>Mulai, pantau, dan selesaikan penghitungan truck di lapangan.</CardDescription></CardHeader><CardContent><Button asChild className="h-11 w-full"><Link href="/dashboard">Buka Dashboard Operator <ArrowRight /></Link></Button></CardContent></Card>
+          <Card><CardHeader><span className="mb-2 flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><ShieldCheck /></span><CardTitle>Portal Admin</CardTitle><CardDescription>Kelola receiving, master data, perangkat, laporan, dan audit trail.</CardDescription></CardHeader><CardContent><Button asChild variant="outline" className="h-11 w-full"><Link href="/admin/dashboard">Buka Dashboard Admin <ArrowRight /></Link></Button></CardContent></Card>
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="text-center text-xs text-slate-500 z-10 border-t border-slate-800 pt-4">
-        © 2026 Poultry Receiving Counter System • Batch 1 UI Scaffold
-      </footer>
+      <footer className="relative border-t px-4 py-5 text-center text-xs text-muted-foreground">© 2026 Poultry Receiving Counter System</footer>
     </div>
-  );
+  )
 }

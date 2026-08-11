@@ -19,6 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { useWebSocket } from '@/components/layout/ws-provider';
 
 export default function AdminDashboardPage() {
@@ -86,7 +87,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-xs">
         <div>
           <h1 className="text-xl font-bold text-foreground">Dashboard Administrator</h1>
           <p className="text-xs text-muted-foreground mt-1">
@@ -184,7 +185,7 @@ export default function AdminDashboardPage() {
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-foreground text-sm">{item.line.name}</span>
                       {item.activeSession ? (
-                        <Badge variant="warning" className="animate-pulse text-[10px]">COUNTING</Badge>
+                        <StatusBadge tone="warning" className="animate-pulse text-[10px]">COUNTING</StatusBadge>
                       ) : (
                         <Badge variant="secondary" className="text-[10px]">IDLE</Badge>
                       )}

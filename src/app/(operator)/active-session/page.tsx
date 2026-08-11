@@ -7,6 +7,7 @@ import { CountingConsole, ActiveSessionDetail } from '@/components/receiving/cou
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Radio, AlertCircle, PlayCircle, Layers } from 'lucide-react';
 import { useWebSocket } from '@/components/layout/ws-provider';
 
@@ -93,12 +94,12 @@ export default function OperatorActiveSessionPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-10">
       {/* Header & Line Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-xs">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-foreground">Console Penghitungan Sesi Aktif</h1>
             {sessionDetail ? (
-              <Badge variant="warning" className="animate-pulse">COUNTING</Badge>
+              <StatusBadge tone="warning" className="animate-pulse">COUNTING</StatusBadge>
             ) : (
               <Badge variant="outline" className="text-slate-500">IDLE / SIAP</Badge>
             )}
@@ -120,7 +121,7 @@ export default function OperatorActiveSessionPage() {
                   onClick={() => setSelectedLineId(l.id)}
                   className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
                     selectedLineId === l.id
-                      ? 'bg-purple-600 text-white shadow-sm'
+                      ? 'bg-purple-600 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >

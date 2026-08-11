@@ -5,6 +5,7 @@ import { Settings, Save, Globe, Clock, ShieldAlert, Cpu, RefreshCw, CheckCircle2
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function AdminSettingsPage() {
   const [siteName, setSiteName] = useState("Poultry Receiving Counter System - RPA Jaya Abadi");
@@ -91,7 +92,7 @@ export default function AdminSettingsPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-xs">
           <div>
             <h1 className="text-xl font-bold text-foreground">Pengaturan Sistem (Site Settings)</h1>
             <p className="text-xs text-muted-foreground mt-1">
@@ -150,8 +151,9 @@ export default function AdminSettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4 text-xs">
                 <div className="space-y-1.5">
-                  <label className="font-semibold text-foreground">Nama Sistem / RPA Site</label>
+                  <Label htmlFor="settings-site-name">Nama Sistem / RPA Site</Label>
                   <Input
+                    id="settings-site-name"
                     value={siteName}
                     onChange={(e) => setSiteName(e.target.value)}
                     required
@@ -161,10 +163,11 @@ export default function AdminSettingsPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="font-semibold text-foreground flex items-center gap-1">
+                    <Label htmlFor="settings-timezone" className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5 text-purple-600" /> Site Timezone
-                    </label>
+                    </Label>
                     <Input
+                      id="settings-timezone"
                       value={siteTimezone}
                       onChange={(e) => setSiteTimezone(e.target.value)}
                       required
@@ -174,8 +177,9 @@ export default function AdminSettingsPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="font-semibold text-foreground">Interval Fallback Polling (Detik)</label>
+                    <Label htmlFor="settings-polling">Interval Fallback Polling (Detik)</Label>
                     <Input
+                      id="settings-polling"
                       type="number"
                       value={pollingFallbackIntervalSeconds}
                       onChange={(e) => setPollingFallbackIntervalSeconds(Number(e.target.value))}
@@ -202,8 +206,9 @@ export default function AdminSettingsPage() {
               <CardContent className="space-y-4 text-xs">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="font-semibold text-foreground">Threshold Heartbeat Degraded (Detik)</label>
+                    <Label htmlFor="settings-degraded">Threshold Heartbeat Degraded (Detik)</Label>
                     <Input
+                      id="settings-degraded"
                       type="number"
                       value={heartbeatDegradedThresholdSeconds}
                       onChange={(e) => setHeartbeatDegradedThresholdSeconds(Number(e.target.value))}
@@ -217,8 +222,9 @@ export default function AdminSettingsPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="font-semibold text-foreground">Threshold Heartbeat Offline (Detik)</label>
+                    <Label htmlFor="settings-offline">Threshold Heartbeat Offline (Detik)</Label>
                     <Input
+                      id="settings-offline"
                       type="number"
                       value={heartbeatOfflineThresholdSeconds}
                       onChange={(e) => setHeartbeatOfflineThresholdSeconds(Number(e.target.value))}
@@ -233,11 +239,12 @@ export default function AdminSettingsPage() {
                 </div>
 
                 <div className="pt-2 border-t border-border space-y-1.5">
-                  <label className="font-semibold text-foreground flex items-center gap-1">
+                  <Label htmlFor="settings-batch-size" className="flex items-center gap-1">
                     <Cpu className="h-3.5 w-3.5 text-purple-600" />
                     <span>Device Batch Upload Max Events</span>
-                  </label>
+                  </Label>
                   <Input
+                    id="settings-batch-size"
                     type="number"
                     value={deviceBatchSize}
                     onChange={(e) => setDeviceBatchSize(Number(e.target.value))}

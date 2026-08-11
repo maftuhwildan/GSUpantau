@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Play, Clock, Edit, FileText, XCircle } from 'lucide-react';
 
 export interface ReceivingData {
@@ -61,10 +63,78 @@ export function QueueTable({
     );
   }
 
+  const renderStatus = (receiving: ReceivingData) => {
+    if (receiving.status === 'DRAFT') return <StatusBadge tone="neutral">DRAFT</StatusBadge>;
+    if (receiving.status === 'WAITING') return <StatusBadge tone="info">WAITING</StatusBadge>;
+    if (receiving.status === 'COUNTING') return <StatusBadge tone="warning" className="animate-pulse">COUNTING</StatusBadge>;
+    if (receiving.status === 'COMPLETED') return <StatusBadge tone="success">COMPLETED</StatusBadge>;
+    if (receiving.status === 'CANCELLED') return <StatusBadge tone="danger">CANCELLED</StatusBadge>;
+    return <Badge variant="outline">{receiving.status}</Badge>;
+  };
+
+  const renderActions = (receiving: ReceivingData, mobile = false) => (
+    <div className={mobile ? 'grid grid-cols-2 gap-2' : 'flex items-center justify-end gap-1.5'}>
+      {isAdmin && receiving.status === 'DRAFT' && onPublish && (
+        <Button size="sm" onClick={() => onPublish(receiving)} className={mobile ? 'h-11' : 'h-8 text-xs'}>
+          Publish
+        </Button>
+      )}
+      {isAdmin && (receiving.status === 'DRAFT' || receiving.status === 'WAITING') && onEdit && (
+        <Button size="sm" variant="outline" onClick={() => onEdit(receiving)} className={mobile ? 'h-11' : 'h-8 text-xs'}>
+          <Edit /> {receiving.status === 'WAITING' ? 'Revisi' : 'Edit'}
+        </Button>
+      )}
+      {isAdmin && (receiving.status === 'DRAFT' || receiving.status === 'WAITING') && onCancel && (
+        <Button size="sm" variant="ghost" onClick={() => onCancel(receiving)} className={mobile ? 'h-11 text-destructive' : 'h-8 text-xs text-destructive'}>
+          <XCircle /> Batal
+        </Button>
+      )}
+      {receiving.status === 'WAITING' && (
+        <Button size="sm" onClick={() => onStart ? onStart(receiving) : null} asChild={!onStart} className={mobile ? 'h-11' : 'h-8 text-xs'}>
+          {onStart ? <><Play /> Mulai Hitung</> : <Link href={isAdmin ? '/admin/counting' : '/active-session'}><Play /> Mulai Hitung</Link>}
+        </Button>
+      )}
+      {receiving.status === 'COUNTING' && (
+        <Button size="sm" variant="outline" asChild className={mobile ? 'h-11' : 'h-8 text-xs'}>
+          <Link href={isAdmin ? '/admin/counting' : '/active-session'}><Clock /> Console</Link>
+        </Button>
+      )}
+      {onDetail && (
+        <Button size="sm" variant="ghost" onClick={() => onDetail(receiving)} className={mobile ? 'h-11' : 'h-8 text-xs'}>
+          <FileText /> Detail
+        </Button>
+      )}
+    </div>
+  );
+
   return (
-    <div className="overflow-x-auto">
+    <>
+      <div className="grid gap-3 md:hidden">
+        {receivings.map((receiving) => (
+          <Card key={receiving.id} className="overflow-hidden">
+            <CardContent className="space-y-4 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-heading font-semibold">{receiving.licensePlateSnapshot}</p>
+                  <p className="truncate text-xs text-muted-foreground">{receiving.deliveryNoteNumber} • {receiving.driverNameSnapshot}</p>
+                </div>
+                {renderStatus(receiving)}
+              </div>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+                <div><dt className="text-muted-foreground">Supplier</dt><dd className="mt-0.5 truncate font-medium">{receiving.supplierNameSnapshot}</dd></div>
+                <div><dt className="text-muted-foreground">Jalur</dt><dd className="mt-0.5 font-medium">{receiving.lineName || '-'}</dd></div>
+                <div><dt className="text-muted-foreground">Manifest</dt><dd className="mt-0.5 font-semibold tabular-nums">{receiving.manifestCount.toLocaleString('id-ID')} ekor</dd></div>
+                <div><dt className="text-muted-foreground">Actual Sensor</dt><dd className="mt-0.5 font-semibold tabular-nums">{receiving.actualCount == null ? 'Belum dihitung' : `${receiving.actualCount.toLocaleString('id-ID')} ekor`}</dd></div>
+              </dl>
+              {renderActions(receiving, true)}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
       <table className="w-full text-left text-xs">
-        <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border-b border-border">
+        <thead className="border-b border-border bg-muted/60 font-semibold text-foreground">
           <tr>
             <th className="p-3 w-10 text-center">Pos</th>
             <th className="p-3">No. Surat Jalan</th>
@@ -80,7 +150,7 @@ export function QueueTable({
         </thead>
         <tbody className="divide-y divide-border">
           {receivings.map((r) => (
-            <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+            <tr key={r.id} className="transition-colors hover:bg-muted/40">
               <td className="p-3 text-center font-bold text-slate-500">
                 {r.status === 'WAITING' || r.status === 'COUNTING' ? r.queuePosition : '-'}
               </td>
@@ -89,11 +159,11 @@ export function QueueTable({
                 <div className="text-[10px] font-mono text-muted-foreground">{r.receivingNumber}</div>
               </td>
               <td className="p-3">
-                <div className="font-bold text-purple-700 dark:text-purple-400">{r.licensePlateSnapshot}</div>
+                <div className="font-bold text-primary">{r.licensePlateSnapshot}</div>
                 <div className="text-[11px] text-muted-foreground">{r.driverNameSnapshot}</div>
               </td>
-              <td className="p-3 text-slate-600 dark:text-slate-400">{r.supplierNameSnapshot}</td>
-              <td className="p-3 text-slate-600 dark:text-slate-400">
+              <td className="p-3 text-muted-foreground">{r.supplierNameSnapshot}</td>
+              <td className="p-3 text-muted-foreground">
                 {r.lineName ? (
                   <Badge variant="outline" className="text-[10px]">
                     {r.lineName}
@@ -105,14 +175,14 @@ export function QueueTable({
               <td className="p-3 text-right font-bold text-foreground">
                 {r.manifestCount.toLocaleString('id-ID')} ekor
               </td>
-              <td className="p-3 text-right font-bold text-purple-700 dark:text-purple-400">
+              <td className="p-3 text-right font-bold text-primary">
                 {r.actualCount !== null && r.actualCount !== undefined
                   ? `${r.actualCount.toLocaleString('id-ID')} ekor`
                   : <span className="text-muted-foreground font-normal italic">Belum dihitung</span>}
               </td>
               <td className="p-3 text-right font-bold">
                 {r.differenceCount !== null && r.differenceCount !== undefined ? (
-                  <span className={r.differenceCount < 0 ? 'text-red-600' : r.differenceCount > 0 ? 'text-emerald-600' : 'text-slate-600'}>
+                  <span className={r.differenceCount < 0 ? 'text-destructive' : r.differenceCount > 0 ? 'text-success' : 'text-muted-foreground'}>
                     {r.differenceCount > 0 ? `+${r.differenceCount}` : r.differenceCount} ekor
                     {r.differencePercent !== null && ` (${r.differencePercent}%)`}
                   </span>
@@ -121,100 +191,16 @@ export function QueueTable({
                 )}
               </td>
               <td className="p-3 text-center">
-                {r.status === 'DRAFT' && <Badge variant="outline">DRAFT</Badge>}
-                {r.status === 'WAITING' && (
-                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
-                    WAITING
-                  </Badge>
-                )}
-                {r.status === 'COUNTING' && (
-                  <Badge variant="warning" className="animate-pulse">
-                    COUNTING
-                  </Badge>
-                )}
-                {r.status === 'COMPLETED' && <Badge variant="success">COMPLETED</Badge>}
-                {r.status === 'CANCELLED' && (
-                  <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                    CANCELLED
-                  </Badge>
-                )}
+                {renderStatus(r)}
               </td>
               <td className="p-3 text-right">
-                <div className="flex items-center justify-end gap-1.5">
-                  {/* Admin Actions */}
-                  {isAdmin && r.status === 'DRAFT' && onPublish && (
-                    <Button
-                      size="sm"
-                      onClick={() => onPublish(r)}
-                      className="h-7 text-[11px] bg-purple-600 hover:bg-purple-500 text-white"
-                    >
-                      Publish
-                    </Button>
-                  )}
-                  {isAdmin && (r.status === 'DRAFT' || r.status === 'WAITING') && onEdit && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onEdit(r)}
-                      className="h-7 text-[11px] gap-1"
-                    >
-                      <Edit className="h-3 w-3" />
-                      <span>{r.status === 'WAITING' ? 'Revisi' : 'Edit'}</span>
-                    </Button>
-                  )}
-                  {isAdmin && (r.status === 'DRAFT' || r.status === 'WAITING') && onCancel && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => onCancel(r)}
-                      className="h-7 text-[11px] text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <XCircle className="h-3 w-3" />
-                    </Button>
-                  )}
-
-                  {/* Start / Console Actions */}
-                  {r.status === 'WAITING' && (
-                    <Button
-                      size="sm"
-                      onClick={() => onStart ? onStart(r) : null}
-                      asChild={!onStart}
-                      className="bg-purple-600 hover:bg-purple-500 text-white text-xs h-7 gap-1"
-                    >
-                      {onStart ? (
-                        <>
-                          <Play className="h-3 w-3" /> Mulai Hitung
-                        </>
-                      ) : (
-                        <Link href={isAdmin ? '/admin/counting' : '/operator/active-session'}>
-                          <Play className="h-3 w-3" /> Mulai Hitung
-                        </Link>
-                      )}
-                    </Button>
-                  )}
-                  {r.status === 'COUNTING' && (
-                    <Button size="sm" variant="outline" asChild className="text-xs h-7 gap-1 border-purple-300">
-                      <Link href={isAdmin ? '/admin/counting' : '/operator/active-session'}>
-                        <Clock className="h-3 w-3 text-purple-600" /> Console
-                      </Link>
-                    </Button>
-                  )}
-                  {onDetail && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => onDetail(r)}
-                      className="h-7 text-[11px] gap-1 text-slate-600"
-                    >
-                      <FileText className="h-3 w-3" /> Detail
-                    </Button>
-                  )}
-                </div>
+                {renderActions(r)}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }

@@ -9,6 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useWebSocket } from '@/components/layout/ws-provider';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function AdminAuditTrailPage() {
   const [logs, setLogs] = useState<any[]>([]);
@@ -96,19 +99,11 @@ export default function AdminAuditTrailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-sm">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Audit Trail</h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Rekam jejak aktivitas sistem yang bersifat immutable (tidak dapat diubah/dihapus).
-          </p>
-        </div>
-        <div className="flex gap-2">
+      <PageHeader title="Audit Trail" description="Rekam jejak aktivitas sistem yang immutable dan tidak dapat diubah atau dihapus." actions={
           <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading} className="text-xs gap-1">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
-        </div>
-      </div>
+      } />
 
       {errorMsg && (
         <div className="p-4 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs flex items-center gap-2">
@@ -122,67 +117,35 @@ export default function AdminAuditTrailPage() {
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Aksi (Action)</label>
-              <select
-                value={actionFilter}
-                onChange={(e) => setActionFilter(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="ALL">Semua Action</option>
-                <option value="LOGIN">LOGIN</option>
-                <option value="CREATE_RECEIVING">CREATE_RECEIVING</option>
-                <option value="UPDATE_RECEIVING">UPDATE_RECEIVING</option>
-                <option value="PUBLISH_RECEIVING">PUBLISH_RECEIVING</option>
-                <option value="CANCEL_RECEIVING">CANCEL_RECEIVING</option>
-                <option value="START_SESSION">START_SESSION</option>
-                <option value="FINISH_SESSION">FINISH_SESSION</option>
-                <option value="CANCEL_SESSION">CANCEL_SESSION</option>
-                <option value="CREATE_USER">CREATE_USER</option>
-                <option value="UPDATE_USER">UPDATE_USER</option>
-                <option value="CREATE_LINE">CREATE_LINE</option>
-                <option value="CREATE_DEVICE">CREATE_DEVICE</option>
-              </select>
+              <Label htmlFor="audit-action">Aksi (Action)</Label>
+              <Select value={actionFilter} onValueChange={setActionFilter}><SelectTrigger id="audit-action" className="w-full"><SelectValue /></SelectTrigger><SelectContent>
+                {['ALL','LOGIN','CREATE_RECEIVING','UPDATE_RECEIVING','PUBLISH_RECEIVING','CANCEL_RECEIVING','START_SESSION','FINISH_SESSION','CANCEL_SESSION','CREATE_USER','UPDATE_USER','CREATE_LINE','CREATE_DEVICE'].map((action) => <SelectItem key={action} value={action}>{action === 'ALL' ? 'Semua Action' : action}</SelectItem>)}
+              </SelectContent></Select>
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Tipe Entitas</label>
-              <select
-                value={entityFilter}
-                onChange={(e) => setEntityFilter(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="ALL">Semua Entitas</option>
-                <option value="receiving">Receiving</option>
-                <option value="receiving_session">Receiving Session</option>
-                <option value="user">User</option>
-                <option value="line">Line</option>
-                <option value="device">Device</option>
-                <option value="truck">Truck</option>
-                <option value="driver">Driver</option>
-                <option value="supplier">Supplier</option>
-                <option value="app_settings">App Settings</option>
-              </select>
+              <Label htmlFor="audit-entity">Tipe Entitas</Label>
+              <Select value={entityFilter} onValueChange={setEntityFilter}><SelectTrigger id="audit-entity" className="w-full"><SelectValue /></SelectTrigger><SelectContent>
+                {['ALL','receiving','receiving_session','user','line','device','truck','driver','supplier','app_settings'].map((entity) => <SelectItem key={entity} value={entity}>{entity === 'ALL' ? 'Semua Entitas' : entity}</SelectItem>)}
+              </SelectContent></Select>
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Aktor (Pengguna)</label>
-              <select
-                value={actorFilter}
-                onChange={(e) => setActorFilter(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="ALL">Semua Aktor</option>
+              <Label htmlFor="audit-actor">Aktor (Pengguna)</Label>
+              <Select value={actorFilter} onValueChange={setActorFilter}><SelectTrigger id="audit-actor" className="w-full"><SelectValue /></SelectTrigger><SelectContent>
+                <SelectItem value="ALL">Semua Aktor</SelectItem>
                 {usersList.map((u) => (
-                  <option key={u.id} value={u.id}>
+                  <SelectItem key={u.id} value={u.id}>
                     {u.name} ({u.roles?.join(', ') || 'USER'})
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
+              </SelectContent></Select>
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Dari Waktu</label>
+              <Label htmlFor="audit-date-from">Dari Waktu</Label>
               <Input
+                id="audit-date-from"
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
@@ -191,8 +154,9 @@ export default function AdminAuditTrailPage() {
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Sampai Waktu</label>
+              <Label htmlFor="audit-date-to">Sampai Waktu</Label>
               <Input
+                id="audit-date-to"
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}

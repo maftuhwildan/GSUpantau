@@ -45,8 +45,24 @@ Lihat `docs/ESP32_SIMULATION_RESULTS.md` untuk observasi simulasi tanpa sensor d
 
 ## Fokus Berikutnya
 
-Tahap berikutnya yang direncanakan adalah perbaikan UI dan UX. Perubahan tersebut harus
-mempertahankan invariant backend berikut:
+Rombak UI responsif tahap pertama telah diterapkan pada branch
+`codex/ui-shadcn-overhaul`:
+
+- Tailwind CSS 4 dan full preset shadcn `b50LzhLQA` (Maia, Mist, Rose, Figtree,
+  Lucide, Radix) telah menjadi foundation design system;
+- sidebar desktop dapat diciutkan ke ikon dan menyimpan state melalui cookie;
+- sidebar mobile menjadi off-canvas dan menutup setelah navigasi;
+- navigasi Admin dikelompokkan berdasarkan Operasional, Data & Perangkat,
+  Administrasi, dan Analitik, sedangkan Operator hanya menerima menu operasional;
+- form dan dialog utama memakai primitive shadcn/Radix resmi;
+- antrean receiving memakai kartu pada mobile dan tabel lokal pada desktop;
+- counting aktif memiliki action bar finish yang sticky pada mobile dan tetap wajib
+  melalui dialog konfirmasi/SOP yang sama;
+- light mode adalah pengalaman resmi tahap ini; dark mode belum menjadi target QA.
+
+Tahap berikutnya adalah QA visual terautentikasi menggunakan database development aktif,
+polish semantic token pada visualisasi/console simulator, dan field test hardware. Seluruh
+pekerjaan tersebut harus mempertahankan invariant backend berikut:
 
 - actual hanya berasal dari event DETECTION + PRODUCTION + ASSIGNED;
 - actual tidak dapat diedit manual;
@@ -60,10 +76,13 @@ mempertahankan invariant backend berikut:
 
 - `npm run lint`: PASS.
 - `npm run typecheck`: PASS.
-- `npm test`: PASS, termasuk regression test line dengan device MAINTENANCE + ONLINE.
+- `npm test`: PASS, termasuk regression test line dengan device MAINTENANCE + ONLINE
+  dan test grouping/visibility navigasi berdasarkan role.
 - Firmware PlatformIO target `esp32-s3-devkitc-1`: berhasil dibangun dan di-upload.
-- `npm run build`: compile dan typecheck PASS; page collection terakhir tidak diselesaikan
-  karena dev server aktif memakai `.next`. Jalankan ulang setelah dev server dihentikan.
+- `npm run build`: PASS, termasuk compile, typecheck, page collection, dan 43 static pages.
+- QA publik 360 px: landing/login tidak memiliki horizontal overflow dan target sentuh
+  aksi utama minimal 44 px. QA halaman terautentikasi di seluruh breakpoint masih perlu
+  diulang saat PostgreSQL development tersedia.
 
 Jangan menulis Wi-Fi password, device secret, session cookie, `DATABASE_URL`, atau
 credential lain ke dokumentasi, issue, screenshot publik, maupun commit.

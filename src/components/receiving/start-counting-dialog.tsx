@@ -12,6 +12,9 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface StartCountingDialogProps {
   open: boolean;
@@ -107,7 +110,7 @@ export function StartCountingDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-purple-700">
+          <DialogTitle className="flex items-center gap-2 text-primary">
             <PlayCircle className="h-5 w-5" />
             Mulai Penghitungan
           </DialogTitle>
@@ -118,34 +121,28 @@ export function StartCountingDialog({
 
         <div className="py-4 space-y-4">
           {errorMsg && (
-            <div className="p-3 bg-red-50 text-red-700 rounded-md border border-red-200 text-xs flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
+            <Alert variant="destructive"><AlertCircle /><AlertDescription>{errorMsg}</AlertDescription></Alert>
           )}
 
           <div className="space-y-2">
-            <label htmlFor="line-select" className="text-xs font-medium">
+            <Label htmlFor="line-select">
               Jalur (Line) Operasional
-            </label>
+            </Label>
             {loadingLines ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
                 <Loader2 className="h-4 w-4 animate-spin" /> Memuat Jalur...
               </div>
             ) : (
-              <select
-                id="line-select"
-                value={selectedLineId}
-                onChange={(e) => setSelectedLineId(e.target.value)}
-                className="w-full flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <option value="" disabled>-- Pilih Jalur --</option>
+              <Select value={selectedLineId} onValueChange={setSelectedLineId}>
+                <SelectTrigger id="line-select" className="w-full"><SelectValue placeholder="Pilih Jalur" /></SelectTrigger>
+                <SelectContent>
                 {lines.map((l) => (
-                  <option key={l.id} value={l.id}>
+                  <SelectItem key={l.id} value={l.id}>
                     {l.name}
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
+                </SelectContent>
+              </Select>
             )}
           </div>
         </div>
@@ -157,7 +154,6 @@ export function StartCountingDialog({
           <Button 
             onClick={handleStart} 
             disabled={isSubmitting || !selectedLineId || loadingLines}
-            className="bg-purple-600 hover:bg-purple-700 text-white"
           >
             {isSubmitting ? (
               <>

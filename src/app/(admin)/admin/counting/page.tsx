@@ -92,7 +92,7 @@ export default function AdminCountingPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-10">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-xs">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-foreground">Penghitungan Admin (Counting Console)</h1>
@@ -117,7 +117,7 @@ export default function AdminCountingPage() {
                   onClick={() => setSelectedLineId(l.id)}
                   className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
                     selectedLineId === l.id
-                      ? 'bg-purple-600 text-white shadow-sm'
+                      ? 'bg-purple-600 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >

@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function AdminReportsPage() {
   const [data, setData] = useState<any>(null);
@@ -80,23 +83,14 @@ export default function AdminReportsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-sm">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Laporan Operasional</h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Laporan penerimaan, actual vs manifest, dan efisiensi sensor.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <PageHeader title="Laporan Operasional" description="Laporan penerimaan, actual vs manifest, dan efisiensi sensor." actions={<>
           <Button variant="outline" size="sm" onClick={fetchReports} disabled={loading} className="text-xs gap-1">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
-          <Button variant="default" size="sm" onClick={handleExportCSV} disabled={loading || !data} className="text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+          <Button size="sm" onClick={handleExportCSV} disabled={loading || !data} className="text-xs gap-1">
             <Download className="h-3.5 w-3.5" /> Export CSV
           </Button>
-        </div>
-      </div>
+        </>} />
 
       {errorMsg && (
         <div className="p-4 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs flex items-center gap-2">
@@ -110,8 +104,9 @@ export default function AdminReportsPage() {
         <div className="flex flex-col lg:flex-row items-end gap-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 w-full">
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Tanggal Dari</label>
+              <Label htmlFor="report-date-from">Tanggal Dari</Label>
               <Input
+                id="report-date-from"
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
@@ -119,8 +114,9 @@ export default function AdminReportsPage() {
               />
             </div>
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Tanggal Sampai</label>
+              <Label htmlFor="report-date-to">Tanggal Sampai</Label>
               <Input
+                id="report-date-to"
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
@@ -128,19 +124,15 @@ export default function AdminReportsPage() {
               />
             </div>
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Jalur (Line)</label>
-              <select
-                value={lineId}
-                onChange={(e) => setLineId(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="ALL">Semua Line</option>
+              <Label htmlFor="report-line">Jalur (Line)</Label>
+              <Select value={lineId} onValueChange={setLineId}><SelectTrigger id="report-line" className="w-full"><SelectValue /></SelectTrigger><SelectContent>
+                <SelectItem value="ALL">Semua Line</SelectItem>
                 {lines.map((l) => (
-                  <option key={l.id} value={l.id}>
+                  <SelectItem key={l.id} value={l.id}>
                     {l.lineCode} - {l.name}
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
+              </SelectContent></Select>
             </div>
           </div>
 
