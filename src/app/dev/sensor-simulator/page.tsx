@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { applyDeviceHealthViewUpdate } from "@/lib/device-health-view";
 import {
@@ -441,7 +443,7 @@ export default function SensorSimulatorPage() {
     return (
       <DashboardShell role={role} userEmail={userEmail}>
         <div className="flex items-center justify-center min-h-[400px]">
-          <RefreshCw className="h-8 w-8 animate-spin text-purple-600" />
+          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
         </div>
       </DashboardShell>
     );
@@ -457,13 +459,13 @@ export default function SensorSimulatorPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <Radio className="h-6 w-6 text-purple-600 animate-pulse" />
+            <Radio className="h-6 w-6 text-primary animate-pulse" />
             <h1 className="text-2xl font-bold tracking-tight">Simulator Sensor ESP32</h1>
-            <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300">
+            <StatusBadge tone="primary">
               Dev Tools
-            </Badge>
+            </StatusBadge>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Simulasi perangkat keras ESP32 untuk menguji ingestion Device API dan penghitungan real-time.
           </p>
         </div>
@@ -474,10 +476,10 @@ export default function SensorSimulatorPage() {
         {/* Left Column: Device Config & Controls */}
         <div className="lg:col-span-1 space-y-6">
           {/* Device Selection Card */}
-          <Card className="border-purple-100 shadow-xs">
+          <Card className="border-primary/25 shadow-xs">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Radio className="h-4 w-4 text-purple-600" />
+                <Radio className="h-4 w-4 text-primary" />
                 Target Jalur & Perangkat
               </CardTitle>
               <CardDescription className="text-xs">
@@ -519,28 +521,28 @@ export default function SensorSimulatorPage() {
                   placeholder="Kredensial Secret"
                   className="font-mono text-xs"
                 />
-                <p className="text-[10px] text-slate-400">
-                  Digunakan pada header HTTP <code className="bg-slate-100 px-1 py-0.5 rounded">Authorization: Bearer secret</code>
+                <p className="text-[10px] text-muted-foreground">
+                  Digunakan pada header HTTP <code className="bg-muted px-1 py-0.5 rounded">Authorization: Bearer secret</code>
                 </p>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-1">
-                <div className="flex justify-between gap-3 text-slate-600">
+              <div className="p-3 bg-muted rounded-lg border border-border text-xs space-y-1">
+                <div className="flex justify-between gap-3 text-muted-foreground">
                   <span>Boot ID:</span>
-                  <span className="font-mono font-semibold text-slate-900 truncate" title={bootId}>
+                  <span className="font-mono font-semibold text-muted-foreground truncate" title={bootId}>
                     {bootId || "Menyiapkan..."}
                   </span>
                 </div>
-                <div className="flex justify-between text-slate-600">
+                <div className="flex justify-between text-muted-foreground">
                   <span>Sequence Saat Ini:</span>
-                  <span className="font-mono font-semibold text-slate-900">{sequence}</span>
+                  <span className="font-mono font-semibold text-muted-foreground">{sequence}</span>
                 </div>
-                <div className="flex justify-between text-slate-600">
+                <div className="flex justify-between text-muted-foreground">
                   <span>Status Sesi Jalur:</span>
                   {activeSessionInfo ? (
-                    <Badge variant="default" className="bg-emerald-600 text-[10px]">
+                    <StatusBadge tone="success" className="text-[10px]">
                       AKTIF (COUNTING)
-                    </Badge>
+                    </StatusBadge>
                   ) : (
                     <Badge variant="secondary" className="text-[10px]">
                       TIDAK ADA SESI
@@ -552,25 +554,25 @@ export default function SensorSimulatorPage() {
           </Card>
 
           {/* Device Status & Offline Simulation Card */}
-          <Card className="border-purple-100 shadow-xs">
+          <Card className="border-primary/25 shadow-xs">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
                 {heartbeatStatus === "ONLINE" ? (
-                  <Wifi className="h-4 w-4 text-emerald-600" />
+                  <Wifi className="h-4 w-4 text-device-online" />
                 ) : (
-                  <WifiOff className="h-4 w-4 text-rose-600" />
+                  <WifiOff className="h-4 w-4 text-device-offline" />
                 )}
                 Status Perangkat & Heartbeat
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg border">
                 <div className="flex items-center gap-2">
                   <span
                     className={`h-2.5 w-2.5 rounded-full ${
                       heartbeatStatus === "ONLINE" && autoHeartbeat
-                        ? "bg-emerald-500 animate-ping"
-                        : "bg-rose-500"
+                        ? "bg-device-online animate-ping"
+                        : "bg-device-offline"
                     }`}
                   />
                   <span className="text-xs font-semibold">
@@ -595,16 +597,16 @@ export default function SensorSimulatorPage() {
                 </Button>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-1">
-                <div className="flex justify-between gap-3 text-slate-600">
+              <div className="p-3 bg-muted rounded-lg border border-border text-xs space-y-1">
+                <div className="flex justify-between gap-3 text-muted-foreground">
                   <span>Status server:</span>
-                  <span className="font-semibold text-slate-900">
+                  <span className="font-semibold text-muted-foreground">
                     {selectedDevice?.status || 'UNKNOWN'}
                   </span>
                 </div>
-                <div className="flex justify-between gap-3 text-slate-600">
+                <div className="flex justify-between gap-3 text-muted-foreground">
                   <span>Heartbeat terakhir:</span>
-                  <span className="font-semibold text-slate-900">
+                  <span className="font-semibold text-muted-foreground">
                     {selectedDevice?.lastHeartbeatAt
                       ? new Date(selectedDevice.lastHeartbeatAt).toLocaleTimeString('id-ID')
                       : 'Belum ada'}
@@ -620,13 +622,13 @@ export default function SensorSimulatorPage() {
                   onClick={sendHeartbeat}
                   disabled={!selectedDeviceCode}
                 >
-                  <Activity className="h-3.5 w-3.5 text-purple-600" />
+                  <Activity className="h-3.5 w-3.5 text-primary" />
                   Kirim 1 Heartbeat
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full text-xs gap-1.5 text-amber-700 border-amber-200 hover:bg-amber-50"
+                  className="w-full text-xs gap-1.5 text-warning-foreground border-warning/25 hover:bg-warning/10"
                   onClick={simulateRestart}
                   disabled={!selectedDeviceCode}
                 >
@@ -642,16 +644,16 @@ export default function SensorSimulatorPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Realtime Active Session Dashboard Bar */}
           {activeSessionInfo && (
-            <div className="p-4 rounded-xl bg-linear-to-r from-purple-900 to-slate-900 text-white shadow-md flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-linear-to-r from-primary to-foreground text-primary-foreground shadow-md flex items-center justify-between">
               <div>
-                <p className="text-[11px] text-purple-200 font-medium">SESI AKTIF PADA {selectedLineCode}</p>
+                <p className="text-[11px] text-primary font-medium">SESI AKTIF PADA {selectedLineCode}</p>
                 <h3 className="text-lg font-bold">Surat Jalan #{activeSessionInfo.receivingNumber}</h3>
               </div>
               <div className="text-right">
-                <p className="text-[11px] text-purple-200 font-medium">DERIVED ACTUAL COUNT</p>
-                <div className="text-3xl font-extrabold text-pink-400 font-mono">
+                <p className="text-[11px] text-primary font-medium">DERIVED ACTUAL COUNT</p>
+                <div className="text-3xl font-extrabold text-primary font-mono">
                   {activeSessionInfo.actualCount}{" "}
-                  <span className="text-xs font-normal text-slate-300">
+                  <span className="text-xs font-normal text-muted-foreground">
                     / {activeSessionInfo.manifestCount} ekor
                   </span>
                 </div>
@@ -660,22 +662,20 @@ export default function SensorSimulatorPage() {
           )}
 
           {!activeSessionInfo && (
-            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
-              <div className="text-xs">
-                <span className="font-semibold">Tidak ada sesi counting aktif di jalur {selectedLineCode}.</span>
-                <p className="text-amber-700 mt-0.5">
-                  Setiap detection event yang dikirim akan disimpan dengan status <code className="bg-amber-100 px-1 py-0.5 rounded">UNASSIGNED</code>.
-                </p>
-              </div>
-            </div>
+            <Alert variant="warning">
+              <AlertTriangle className="h-5 w-5 text-warning-foreground shrink-0" />
+              <AlertTitle>Tidak ada sesi counting aktif di jalur {selectedLineCode}.</AlertTitle>
+              <AlertDescription>
+                  Setiap detection event yang dikirim akan disimpan dengan status <code className="bg-warning/10 px-1 py-0.5 rounded">UNASSIGNED</code>.
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* Action Simulator Panel */}
-          <Card className="border-purple-100 shadow-xs">
+          <Card className="border-primary/25 shadow-xs">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Zap className="h-4 w-4 text-purple-600" />
+                <Zap className="h-4 w-4 text-primary" />
                 Panel Aksi Deteksi Sensor
               </CardTitle>
               <CardDescription className="text-xs">
@@ -687,22 +687,22 @@ export default function SensorSimulatorPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Button
                   size="lg"
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold gap-2 shadow-xs"
+                  className="bg-primary hover:bg-primary text-primary-foreground font-semibold gap-2 shadow-xs"
                   onClick={() => sendDetections(1)}
                   disabled={!selectedDeviceCode}
                 >
-                  <Zap className="h-5 w-5 text-yellow-300" />
+                  <Zap className="h-5 w-5 text-warning-foreground" />
                   +1 Deteksi
                 </Button>
 
                 <Button
                   size="lg"
                   variant="secondary"
-                  className="bg-purple-100 hover:bg-purple-200 text-purple-900 font-semibold gap-2"
+                  className="bg-primary/10 hover:bg-primary/10 text-primary font-semibold gap-2"
                   onClick={() => sendDetections(10)}
                   disabled={!selectedDeviceCode}
                 >
-                  <Zap className="h-5 w-5 text-purple-600" />
+                  <Zap className="h-5 w-5 text-primary" />
                   +10 Deteksi (Batch)
                 </Button>
 
@@ -710,7 +710,7 @@ export default function SensorSimulatorPage() {
                   size="lg"
                   variant={autoDetecting ? "destructive" : "outline"}
                   className={`font-semibold gap-2 ${
-                    !autoDetecting ? "border-purple-300 text-purple-700 hover:bg-purple-50" : ""
+                    !autoDetecting ? "border-primary/25 text-primary hover:bg-primary/10" : ""
                   }`}
                   onClick={() => setAutoDetecting(!autoDetecting)}
                   disabled={!selectedDeviceCode}
@@ -722,7 +722,7 @@ export default function SensorSimulatorPage() {
                     </>
                   ) : (
                     <>
-                      <Play className="h-5 w-5 text-emerald-600 fill-emerald-600" />
+                      <Play className="h-5 w-5 text-success fill-success" />
                       Mulai Auto (+1/1.5s)
                     </>
                   )}
@@ -731,23 +731,23 @@ export default function SensorSimulatorPage() {
 
               {/* Edge Case Simulators */}
               <div className="pt-3 border-t grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-3 bg-slate-50 rounded-lg border space-y-2">
+                <div className="p-3 bg-muted rounded-lg border space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
-                      <Copy className="h-3.5 w-3.5 text-blue-600" />
+                    <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <Copy className="h-3.5 w-3.5 text-info" />
                       Simulasi Event Duplikat
                     </span>
                     <Badge variant="outline" className="text-[10px]">
                       Idempotency Test
                     </Badge>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-tight">
+                  <p className="text-[11px] text-muted-foreground leading-tight">
                     Mengirim ulang event_id dan sequence yang persis sama dengan event terakhir.
                   </p>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="w-full text-xs border-blue-200 text-blue-800 hover:bg-blue-50"
+                    className="w-full text-xs border-info/25 text-info hover:bg-info/10"
                     onClick={() => sendDetections(1, true, false)}
                     disabled={!lastSentEvent}
                   >
@@ -755,23 +755,23 @@ export default function SensorSimulatorPage() {
                   </Button>
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-lg border space-y-2">
+                <div className="p-3 bg-muted rounded-lg border space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-amber-600" />
+                    <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-warning-foreground" />
                       Simulasi Delayed Event
                     </span>
                     <Badge variant="outline" className="text-[10px]">
                       Backdated Time
                     </Badge>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-tight">
+                  <p className="text-[11px] text-muted-foreground leading-tight">
                     Mengirim event deteksi dengan device_time 10 menit yang lalu.
                   </p>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="w-full text-xs border-amber-200 text-amber-800 hover:bg-amber-50"
+                    className="w-full text-xs border-warning/25 text-warning-foreground hover:bg-warning/10"
                     onClick={() => sendDetections(1, false, true)}
                     disabled={!selectedDeviceCode}
                   >
@@ -783,11 +783,11 @@ export default function SensorSimulatorPage() {
           </Card>
 
           {/* Console Log Panel */}
-          <Card className="border-purple-100 shadow-xs">
+          <Card className="border-primary/25 shadow-xs">
             <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
               <div>
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Terminal className="h-4 w-4 text-purple-600" />
+                  <Terminal className="h-4 w-4 text-primary" />
                   Console Log Respon HTTP & Event Stream
                 </CardTitle>
                 <CardDescription className="text-xs">
@@ -797,7 +797,7 @@ export default function SensorSimulatorPage() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-xs text-slate-500 hover:text-slate-900 gap-1"
+                className="text-xs text-muted-foreground hover:text-muted-foreground gap-1"
                 onClick={() => setLogs([])}
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -806,7 +806,7 @@ export default function SensorSimulatorPage() {
             </CardHeader>
             <CardContent>
               {logs.length === 0 ? (
-                <div className="p-8 text-center border border-dashed rounded-lg text-slate-400 text-xs">
+                <div className="p-8 text-center border border-dashed rounded-lg text-muted-foreground text-xs">
                   Belum ada log pengiriman. Klik salah satu tombol di atas untuk memulai simulasi.
                 </div>
               ) : (
@@ -816,38 +816,32 @@ export default function SensorSimulatorPage() {
                       key={log.id}
                       className={`p-3 rounded-lg border text-xs font-mono transition-all ${
                         log.success
-                          ? "bg-slate-950 text-slate-100 border-slate-800"
-                          : "bg-rose-950 text-rose-100 border-rose-800"
+                          ? "bg-foreground text-muted-foreground border-border"
+                          : "bg-destructive text-destructive border-destructive/25"
                       }`}
                     >
-                      <div className="flex items-center justify-between pb-1 mb-1 border-b border-white/10 text-[11px]">
+                      <div className="flex items-center justify-between pb-1 mb-1 border-b border-background/10 text-[11px]">
                         <div className="flex items-center gap-2">
-                          <span className="text-purple-400 font-bold">[{log.timestamp}]</span>
-                          <span className="font-semibold text-slate-200">{log.action}</span>
+                          <span className="text-primary font-bold">[{log.timestamp}]</span>
+                          <span className="font-semibold text-muted-foreground">{log.action}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge
-                            className={`text-[10px] px-1.5 py-0 ${
-                              log.httpStatus === 200
-                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                                : "bg-rose-500/20 text-rose-300 border-rose-500/40"
-                            }`}
-                          >
+                          <StatusBadge tone={log.httpStatus === 200 ? "success" : "danger"} className="px-1.5 py-0 text-[10px]">
                             HTTP {log.httpStatus}
-                          </Badge>
+                          </StatusBadge>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] mt-1 text-slate-300">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] mt-1 text-muted-foreground">
                         <div>
-                          <span className="text-slate-400 block text-[10px]">REQUEST BODY:</span>
-                          <pre className="whitespace-pre-wrap break-all bg-black/40 p-1.5 rounded text-[10px] text-emerald-400">
+                          <span className="text-muted-foreground block text-[10px]">REQUEST BODY:</span>
+                          <pre className="whitespace-pre-wrap break-all bg-foreground/40 p-1.5 rounded text-[10px] text-success">
                             {JSON.stringify(log.requestPayload, null, 2)}
                           </pre>
                         </div>
                         <div>
-                          <span className="text-slate-400 block text-[10px]">RESPONSE BODY:</span>
-                          <pre className="whitespace-pre-wrap break-all bg-black/40 p-1.5 rounded text-[10px] text-pink-300">
+                          <span className="text-muted-foreground block text-[10px]">RESPONSE BODY:</span>
+                          <pre className="whitespace-pre-wrap break-all bg-foreground/40 p-1.5 rounded text-[10px] text-primary">
                             {JSON.stringify(log.responsePayload, null, 2)}
                           </pre>
                         </div>

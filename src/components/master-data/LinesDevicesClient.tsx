@@ -45,6 +45,8 @@ import {
 } from '@/components/ui/table';
 import { useWebSocket } from '@/components/layout/ws-provider';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
+import { EmptyState, LoadingState } from '@/components/ui/states';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -93,15 +95,11 @@ function lineStatusLabel(status: string) {
 
 function ErrorAlert({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-700">
-      <span className="flex items-center gap-2">
-        <AlertCircle className="h-4 w-4" />
-        {message}
-      </span>
-      <Button variant="outline" size="sm" onClick={onRetry}>
-        Coba Lagi
-      </Button>
-    </div>
+    <Alert variant="destructive">
+      <AlertCircle className="h-4 w-4" />
+      <AlertDescription>{message}</AlertDescription>
+      <AlertAction><Button variant="outline" size="sm" onClick={onRetry}>Coba Lagi</Button></AlertAction>
+    </Alert>
   );
 }
 
@@ -131,10 +129,10 @@ function SecretDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5 text-amber-500" />
+            <Key className="h-5 w-5 text-warning-foreground" />
             Kredensial Perangkat
           </DialogTitle>
-          <DialogDescription className="text-xs text-red-600 font-medium">
+          <DialogDescription className="text-xs text-destructive font-medium">
             ⚠️ Salin secret ini sekarang. Kredensial tidak akan ditampilkan lagi.
           </DialogDescription>
         </DialogHeader>
@@ -142,8 +140,8 @@ function SecretDialog({
           <p className="text-xs text-muted-foreground">
             Perangkat: <strong>{deviceCode}</strong>
           </p>
-          <div className="rounded-lg bg-slate-900 p-3">
-            <code className="text-xs text-green-400 break-all">{secret}</code>
+          <div className="rounded-lg bg-foreground p-3">
+            <code className="text-xs text-success break-all">{secret}</code>
           </div>
           <Button id="btn-copy-secret" variant="outline" size="sm" className="w-full" onClick={handleCopy}>
             {copied ? '✓ Tersalin!' : 'Salin Secret'}
@@ -280,7 +278,7 @@ function LineFormDialog({ open, mode, line, onClose, onSuccess }: LineFormDialog
             </>
           )}
           {error && (
-            <p className="text-xs text-red-600">{error}</p>
+            <p className="text-xs text-destructive">{error}</p>
           )}
           <DialogFooter>
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
@@ -429,7 +427,7 @@ function DeviceFormDialog({
           </div>
           )}
           {error && (
-            <p className="text-xs text-red-600">{error}</p>
+            <p className="text-xs text-destructive">{error}</p>
           )}
           <DialogFooter>
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
@@ -491,7 +489,7 @@ function RotateCredentialDialog({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <RotateCcw className="h-5 w-5 text-amber-500" />
+            <RotateCcw className="h-5 w-5 text-warning-foreground" />
             Rotasi Kredensial
           </DialogTitle>
           <DialogDescription className="text-xs">
@@ -503,7 +501,7 @@ function RotateCredentialDialog({
             Perangkat: <strong>{device.deviceCode}</strong>
           </p>
         )}
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && <p className="text-xs text-destructive">{error}</p>}
         <DialogFooter>
           <Button type="button" variant="outline" size="sm" onClick={onClose}>
             Batal
@@ -635,13 +633,9 @@ export default function LinesDevicesClient() {
       {error ? (
         <ErrorAlert message={error} onRetry={fetchLines} />
       ) : loading && linesList.length === 0 ? (
-        <div className="p-12 text-center text-sm text-muted-foreground">
-          Memuat data jalur dan perangkat...
-        </div>
+        <LoadingState label="Memuat data jalur dan perangkat" rows={4} />
       ) : linesList.length === 0 ? (
-        <div className="p-12 text-center text-sm text-muted-foreground">
-          Belum ada jalur yang terdaftar.
-        </div>
+        <EmptyState icon={GitBranch} title="Belum ada jalur" description="Tambahkan jalur untuk mulai menghubungkan perangkat sensor." />
       ) : (
         <div className="space-y-6">
           {linesList.map((line) => (
@@ -649,7 +643,7 @@ export default function LinesDevicesClient() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <GitBranch className="h-4 w-4 text-purple-600" />
+                    <GitBranch className="h-4 w-4 text-primary" />
                     <div>
                       <CardTitle className="text-base font-semibold">
                         {line.lineCode}{' '}
@@ -709,7 +703,7 @@ export default function LinesDevicesClient() {
                     <TableBody>
                       {line.devices.map((device) => (
                         <TableRow key={device.id}>
-                          <TableCell className="text-xs font-mono font-semibold text-purple-700 dark:text-purple-400">
+                          <TableCell className="text-xs font-mono font-semibold text-primary ">
                             <span className="flex items-center gap-1">
                               <Cpu className="h-3 w-3" />
                               {device.deviceCode}
@@ -754,7 +748,7 @@ export default function LinesDevicesClient() {
                                 id={`btn-rotate-device-${device.id}`}
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 text-amber-600 hover:text-amber-700"
+                                className="h-6 w-6 text-warning-foreground hover:text-warning-foreground"
                                 title="Rotasi credential"
                                 onClick={() => openRotate(device)}
                               >

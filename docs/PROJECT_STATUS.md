@@ -60,9 +60,26 @@ Rombak UI responsif tahap pertama telah diterapkan pada branch
   melalui dialog konfirmasi/SOP yang sama;
 - light mode adalah pengalaman resmi tahap ini; dark mode belum menjadi target QA.
 
-Tahap berikutnya adalah QA visual terautentikasi menggunakan database development aktif,
-polish semantic token pada visualisasi/console simulator, dan field test hardware. Seluruh
-pekerjaan tersebut harus mempertahankan invariant backend berikut:
+Penyelesaian migrasi visual shadcn dan semantic token juga telah diterapkan:
+
+- utility warna palette langsung telah dihapus dari kode aplikasi dan dijaga oleh
+  regression test; nilai warna konkret hanya didefinisikan pada token tema;
+- token perangkat memetakan ONLINE ke success, DEGRADED ke warning, OFFLINE ke
+  destructive, dan UNKNOWN ke muted, terpisah dari warna brand Rose;
+- token metrik manifest, actual, assigned, dan unassigned dipakai oleh KPI dan chart;
+- receiving memakai Date Picker terkendali, sedangkan Reports dan Audit Trail memakai
+  Date Range Picker dengan date-only `YYYY-MM-DD` yang aman dari pergeseran timezone;
+- pemilih line memakai Toggle Group, filter master data memakai Select, serta tabel queue
+  dan users memakai Table shadcn tanpa menghilangkan kartu mobile;
+- Dashboard Admin menampilkan chart Manifest versus Actual untuk sesi aktif, Dashboard
+  Operator menampilkan donut Assigned versus Unassigned, dan Reports menampilkan maksimal
+  12 penerimaan terbaru pada chart tanpa membatasi tabel maupun CSV;
+- status, error, empty state, dan loading telah diseragamkan dengan `StatusBadge`, `Alert`,
+  `ErrorState`, `EmptyState`, dan `Skeleton`.
+
+Tahap berikutnya adalah QA visual terautentikasi menggunakan database development aktif
+dan field test hardware. Seluruh pekerjaan tersebut harus mempertahankan invariant backend
+berikut:
 
 - actual hanya berasal dari event DETECTION + PRODUCTION + ASSIGNED;
 - actual tidak dapat diedit manual;
@@ -76,13 +93,17 @@ pekerjaan tersebut harus mempertahankan invariant backend berikut:
 
 - `npm run lint`: PASS.
 - `npm run typecheck`: PASS.
-- `npm test`: PASS, termasuk regression test line dengan device MAINTENANCE + ONLINE
-  dan test grouping/visibility navigasi berdasarkan role.
+- `npm test`: PASS, 281 test termasuk regression test line dengan device MAINTENANCE +
+  ONLINE, grouping/visibility navigasi berdasarkan role, date-only/range, dataset chart,
+  serta larangan palette utility dan kontrol native pada kode aplikasi.
 - Firmware PlatformIO target `esp32-s3-devkitc-1`: berhasil dibangun dan di-upload.
 - `npm run build`: PASS, termasuk compile, typecheck, page collection, dan 43 static pages.
 - QA publik 360 px: landing/login tidak memiliki horizontal overflow dan target sentuh
   aksi utama minimal 44 px. QA halaman terautentikasi di seluruh breakpoint masih perlu
   diulang saat PostgreSQL development tersedia.
+- QA komponen visual aktual pada 360, 390, 768, 1024, dan 1440 px: tidak ada horizontal
+  overflow, kontrol baru memiliki target sentuh minimal 44 px, Calendar menampilkan satu
+  bulan pada mobile dan dua bulan pada desktop, serta chart tetap responsif.
 
 Jangan menulis Wi-Fi password, device secret, session cookie, `DATABASE_URL`, atau
 credential lain ke dokumentasi, issue, screenshot publik, maupun commit.

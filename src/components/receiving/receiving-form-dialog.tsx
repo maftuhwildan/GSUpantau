@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Dialog,
   DialogHeader,
@@ -14,7 +16,8 @@ import {
   DialogContent,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { AlertCircle, FileText, Truck, User, Building2, Hash, Calendar, Layers } from 'lucide-react';
+import { AlertCircle, FileText, Truck, User, Building2, Hash, CalendarDays, Layers } from 'lucide-react';
+import { getTodayDateOnly } from '@/lib/ui-date';
 
 interface ReceivingItem {
   id: string;
@@ -75,7 +78,7 @@ export function ReceivingFormDialog({
   const isEditing = Boolean(receivingToEdit);
 
   const [deliveryNoteNumber, setDeliveryNoteNumber] = useState('');
-  const [receivingDate, setReceivingDate] = useState(new Date().toISOString().split('T')[0]);
+  const [receivingDate, setReceivingDate] = useState(getTodayDateOnly);
   const [documentTruckSequence, setDocumentTruckSequence] = useState<number | ''>('');
   const [queuePosition, setQueuePosition] = useState<number>(1);
   const [truckId, setTruckId] = useState('');
@@ -109,7 +112,7 @@ export function ReceivingFormDialog({
       fetchMasterData();
       if (receivingToEdit) {
         setDeliveryNoteNumber(receivingToEdit.deliveryNoteNumber || '');
-        setReceivingDate(receivingToEdit.receivingDate || new Date().toISOString().split('T')[0]);
+        setReceivingDate(receivingToEdit.receivingDate || getTodayDateOnly());
         setDocumentTruckSequence(receivingToEdit.documentTruckSequence ?? '');
         setQueuePosition(receivingToEdit.queuePosition || 1);
         setTruckId(receivingToEdit.truckId || '');
@@ -124,7 +127,7 @@ export function ReceivingFormDialog({
         setReason('');
       } else {
         setDeliveryNoteNumber('');
-        setReceivingDate(new Date().toISOString().split('T')[0]);
+        setReceivingDate(getTodayDateOnly());
         setDocumentTruckSequence('');
         setQueuePosition(1);
         setTruckId('');
@@ -281,23 +284,21 @@ export function ReceivingFormDialog({
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
         <div className="max-h-[calc(100svh-13rem)] space-y-4 overflow-y-auto px-5 sm:px-6">
           {errorMsg && (
-            <div className="p-3 text-xs bg-red-50 text-red-700 border border-red-200 rounded-lg flex items-center gap-2">
+            <Alert variant="destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
+              <AlertDescription>{errorMsg}</AlertDescription>
+            </Alert>
           )}
 
           {isManifestChanged && (
-            <div className="p-3 text-xs bg-amber-50 text-amber-900 border border-amber-300 rounded-lg space-y-1">
-              <div className="font-semibold flex items-center gap-1.5 text-amber-800">
-                <AlertCircle className="h-4 w-4" />
-                Perhatian: Revisi Manifest pada Status WAITING
-              </div>
-              <p>
+            <Alert variant="warning">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Perhatian: Revisi Manifest pada Status WAITING</AlertTitle>
+              <AlertDescription>
                 Jumlah manifest diubah dari <strong>{receivingToEdit?.manifestCount}</strong> menjadi{' '}
                 <strong>{manifestCount}</strong> ekor. Perubahan ini akan dicatat ke audit log dan riwayat revisi.
-              </p>
-            </div>
+              </AlertDescription>
+            </Alert>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -314,12 +315,11 @@ export function ReceivingFormDialog({
             </div>
 
             <div>
-              <Label htmlFor="receiving-date"><Calendar /> Tanggal Penerimaan *</Label>
-              <Input
+              <Label htmlFor="receiving-date"><CalendarDays /> Tanggal Penerimaan *</Label>
+              <DatePicker
                 id="receiving-date"
-                type="date"
                 value={receivingDate}
-                onChange={(e) => setReceivingDate(e.target.value)}
+                onValueChange={setReceivingDate}
                 required
                 className="text-xs"
               />

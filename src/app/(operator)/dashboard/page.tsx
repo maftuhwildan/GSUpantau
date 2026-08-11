@@ -18,7 +18,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { getDetectionChartData } from '@/lib/chart-data';
 import { useWebSocket } from '@/components/layout/ws-provider';
+import { Pie, PieChart } from 'recharts';
+
+const detectionChartConfig = {
+  assigned: { label: 'Assigned', color: 'var(--metric-assigned)' },
+  unassigned: { label: 'Unassigned', color: 'var(--metric-unassigned)' },
+} satisfies ChartConfig;
 
 type DashboardData = {
   line: any;
@@ -76,11 +85,11 @@ export default function OperatorDashboardPage() {
   }, [lastMessage, fetchDashboard]);
 
   if (loading && !data) {
-    return <div className="p-6 text-center text-muted-foreground"><RefreshCw className="h-6 w-6 animate-spin mx-auto" /></div>;
+    return <LoadingState label="Memuat dashboard Operator" rows={4} />;
   }
 
   if (errorMsg) {
-    return <div className="p-6 text-center text-red-600 font-medium">{errorMsg}</div>;
+    return <ErrorState description={errorMsg} onRetry={fetchDashboard} />;
   }
 
   if (!data) return null;
@@ -88,21 +97,25 @@ export default function OperatorDashboardPage() {
   const deviceStatus = data.device?.status || 'UNKNOWN';
   const deviceStatusTone =
     deviceStatus === 'ONLINE'
-      ? 'text-emerald-700 dark:text-emerald-400'
+      ? 'text-device-online'
       : deviceStatus === 'DEGRADED'
-      ? 'text-amber-700 dark:text-amber-400'
-      : 'text-red-700 dark:text-red-400';
+      ? 'text-device-degraded'
+      : deviceStatus === 'OFFLINE'
+      ? 'text-device-offline'
+      : 'text-device-unknown';
   const deviceStatusDot =
     deviceStatus === 'ONLINE'
-      ? 'bg-emerald-500 animate-ping'
+      ? 'bg-device-online animate-ping'
       : deviceStatus === 'DEGRADED'
-      ? 'bg-amber-500'
-      : 'bg-red-500';
+      ? 'bg-device-degraded'
+      : deviceStatus === 'OFFLINE'
+      ? 'bg-device-offline'
+      : 'bg-device-unknown';
 
   return (
     <div className="space-y-6">
       {/* Top Banner / Line Context */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background dark:bg-card p-6 rounded-xl border border-border shadow-xs">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-foreground">
@@ -120,13 +133,13 @@ export default function OperatorDashboardPage() {
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" asChild className="gap-1.5">
             <Link href="/receiving-queue">
-              <Layers className="h-4 w-4 text-purple-600" />
+              <Layers className="h-4 w-4 text-primary" />
               <span>Lihat Antrean ({data.waitingQueue.length})</span>
             </Link>
           </Button>
 
           {data.activeSession && (
-            <Button size="sm" asChild className="bg-purple-600 hover:bg-purple-500 gap-1.5">
+            <Button size="sm" asChild className="bg-primary hover:bg-primary gap-1.5">
               <Link href="/active-session">
                 <Play className="h-4 w-4" />
                 <span>Buka Console Sesi Aktif</span>
@@ -138,11 +151,11 @@ export default function OperatorDashboardPage() {
 
       {/* Primary Active Session Highlight */}
       {data.activeSession ? (
-        <Card className="border-purple-200 dark:border-purple-900/50 bg-linear-to-br from-white via-purple-50/30 to-pink-50/20 dark:from-card dark:to-purple-950/20 shadow-md">
-          <CardHeader className="pb-3 border-b border-purple-100 dark:border-purple-900/30">
+        <Card className="border-primary/25  bg-linear-to-br from-background via-primary/10 to-primary/10 dark:from-card  shadow-md">
+          <CardHeader className="pb-3 border-b border-primary/25 ">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-purple-600 text-white">
+                <div className="p-2 rounded-lg bg-primary text-primary-foreground">
                   <Truck className="h-5 w-5" />
                 </div>
                 <div>
@@ -162,7 +175,7 @@ export default function OperatorDashboardPage() {
 
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 rounded-xl bg-white dark:bg-card border border-border shadow-xs">
+              <div className="p-4 rounded-xl bg-background dark:bg-card border border-border shadow-xs">
                 <p className="text-xs font-medium text-muted-foreground">Manifest (Surat Jalan)</p>
                 <p className="text-3xl font-extrabold text-foreground mt-1">
                   {data.activeSession.receiving?.manifestCount.toLocaleString()}
@@ -170,15 +183,15 @@ export default function OperatorDashboardPage() {
                 <p className="text-[10px] text-muted-foreground mt-1">Ekor Terdaftar</p>
               </div>
 
-              <div className="p-4 rounded-xl bg-purple-600 text-white shadow-md relative overflow-hidden">
+              <div className="p-4 rounded-xl bg-primary text-primary-foreground shadow-md relative overflow-hidden">
                 <div className="flex justify-between items-start">
-                  <p className="text-xs font-medium text-purple-100">Hitung Realtime (Sensor)</p>
-                  <Radio className="h-4 w-4 animate-pulse text-pink-300" />
+                  <p className="text-xs font-medium text-primary">Hitung Realtime (Sensor)</p>
+                  <Radio className="h-4 w-4 animate-pulse text-primary" />
                 </div>
                 <p className="text-3xl font-extrabold mt-1 tracking-tight">
                   {(data.activeSession.actualCount || 0).toLocaleString()}
                 </p>
-                <p className="text-[10px] text-purple-200 mt-1 flex items-center gap-1">
+                <p className="text-[10px] text-primary mt-1 flex items-center gap-1">
                   <Clock className="h-3 w-3" /> Deteksi terakhir:{' '}
                   {data.activeSession.lastDetection
                     ? new Date(data.activeSession.lastDetection).toLocaleTimeString()
@@ -186,17 +199,17 @@ export default function OperatorDashboardPage() {
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl bg-white dark:bg-card border border-border shadow-xs">
+              <div className="p-4 rounded-xl bg-background dark:bg-card border border-border shadow-xs">
                 <p className="text-xs font-medium text-muted-foreground">Selisih Sementara</p>
-                <p className="text-3xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">
+                <p className="text-3xl font-extrabold text-warning-foreground  mt-1">
                   {((data.activeSession.actualCount || 0) - (data.activeSession.receiving?.manifestCount || 0)).toLocaleString()}
                 </p>
-                <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80 mt-1 font-medium">
+                <p className="text-[10px] text-warning-foreground  mt-1 font-medium">
                   Proses Belum Selesai
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl bg-white dark:bg-card border border-border shadow-xs flex flex-col justify-between">
+              <div className="p-4 rounded-xl bg-background dark:bg-card border border-border shadow-xs flex flex-col justify-between">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Status Sensor Line</p>
                   <div className="flex items-center gap-2 mt-2">
@@ -218,7 +231,7 @@ export default function OperatorDashboardPage() {
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
-              <Button variant="default" asChild className="bg-purple-600 hover:bg-purple-500 gap-2">
+              <Button variant="default" asChild className="bg-primary hover:bg-primary gap-2">
                 <Link href="/active-session">
                   <span>Kelola & Selesaikan Sesi</span>
                   <ArrowRight className="h-4 w-4" />
@@ -228,11 +241,11 @@ export default function OperatorDashboardPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-border p-12 text-center bg-slate-50 dark:bg-slate-900 border-dashed">
-          <Truck className="h-12 w-12 mx-auto text-slate-300 mb-4" />
+        <Card className="border-border p-12 text-center bg-muted  border-dashed">
+          <Truck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium text-foreground">Tidak Ada Sesi Aktif</h3>
           <p className="text-sm text-muted-foreground mt-2 mb-6">Line ini sedang idle. Buka antrean untuk memulai penghitungan truck berikutnya.</p>
-          <Button asChild className="bg-purple-600 hover:bg-purple-500">
+          <Button asChild className="bg-primary hover:bg-primary">
             <Link href="/receiving-queue">Buka Antrean Menunggu</Link>
           </Button>
         </Card>
@@ -254,7 +267,7 @@ export default function OperatorDashboardPage() {
               data.waitingQueue.map((item, idx) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs"
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted  border border-border  text-xs"
                 >
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
@@ -264,8 +277,8 @@ export default function OperatorDashboardPage() {
                     <p className="text-[11px] text-muted-foreground">{item.supplierNameSnapshot}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-purple-700 dark:text-purple-400">{item.manifestCount.toLocaleString()} ekor</p>
-                    <span className="text-[10px] text-slate-400">Siap Dihitung</span>
+                    <p className="font-bold text-primary ">{item.manifestCount.toLocaleString()} ekor</p>
+                    <span className="text-[10px] text-muted-foreground">Siap Dihitung</span>
                   </div>
                 </div>
               ))
@@ -276,34 +289,43 @@ export default function OperatorDashboardPage() {
         <Card className="border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Bird className="h-4 w-4 text-purple-600" />
+              <Bird className="h-4 w-4 text-primary" />
               <span>Ringkasan Deteksi Hari Ini</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-xs">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                <p className="text-muted-foreground font-medium">Assigned Deteksi</p>
-                <p className="text-xl font-bold text-foreground mt-1">
-                  {data.assignedDetections.toLocaleString()}
-                </p>
-                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> Terhubung ke session
-                </p>
-              </div>
+            {data.assignedDetections + data.unassignedDetections === 0 ? (
+              <EmptyState icon={Bird} title="Belum ada deteksi hari ini" description="Distribusi assigned dan unassigned akan muncul setelah sensor mengirim event." />
+            ) : (
+              <>
+                <ChartContainer config={detectionChartConfig} className="mx-auto h-[240px] w-full max-w-sm">
+                  <PieChart accessibilityLayer>
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                    <Pie
+                      data={getDetectionChartData(data.assignedDetections, data.unassignedDetections)}
+                      dataKey="value"
+                      nameKey="key"
+                      innerRadius={58}
+                      outerRadius={86}
+                      strokeWidth={4}
+                    />
+                    <ChartLegend content={<ChartLegendContent nameKey="key" />} />
+                  </PieChart>
+                </ChartContainer>
+                <div className="grid grid-cols-2 gap-3 text-center">
+                  <div className="rounded-lg bg-metric-assigned/10 p-3 text-metric-assigned">
+                    <p className="text-xl font-bold">{data.assignedDetections.toLocaleString()}</p>
+                    <p className="text-[10px]">Assigned</p>
+                  </div>
+                  <div className="rounded-lg bg-metric-unassigned/10 p-3 text-warning-foreground">
+                    <p className="text-xl font-bold">{data.unassignedDetections.toLocaleString()}</p>
+                    <p className="text-[10px]">Unassigned</p>
+                  </div>
+                </div>
+              </>
+            )}
 
-              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50">
-                <p className="text-amber-800 dark:text-amber-400 font-medium">Unassigned Deteksi</p>
-                <p className="text-xl font-bold text-amber-900 dark:text-amber-300 mt-1">
-                  {data.unassignedDetections.toLocaleString()}
-                </p>
-                <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-0.5 flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" /> Di luar sesi aktif
-                </p>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50 text-purple-900 dark:text-purple-300 text-[11px] leading-relaxed">
+            <div className="p-3 rounded-lg bg-primary/10  border border-primary/25  text-primary  text-[11px] leading-relaxed">
               <strong>Aturan SOP Batas Truck:</strong> Pastikan truck yang sedang dihitung benar-benar selesai dan proses penggantungan berhenti sebelum menyelesaikan sesi agar deteksi berikutnya tidak menjadi <em>unassigned</em>.
             </div>
           </CardContent>

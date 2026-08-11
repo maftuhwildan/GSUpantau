@@ -11,6 +11,8 @@ import { ReceivingFormDialog } from '@/components/receiving/receiving-form-dialo
 import { ReceivingCancelDialog } from '@/components/receiving/receiving-cancel-dialog';
 import { StartCountingDialog } from '@/components/receiving/start-counting-dialog';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 export default function AdminReceivingPage() {
   const [receivings, setReceivings] = useState<ReceivingData[]>([]);
@@ -135,28 +137,33 @@ export default function AdminReceivingPage() {
               className="w-full text-xs"
             />
           </div>
-          <div className="flex flex-wrap gap-1.5 text-xs">
+          <ToggleGroup
+            type="single"
+            value={activeTab}
+            onValueChange={(value) => value && setActiveTab(value as typeof activeTab)}
+            variant="outline"
+            spacing={0}
+            className="flex-wrap"
+            aria-label="Filter status Surat Jalan"
+          >
             {(['ALL', 'DRAFT', 'WAITING', 'COUNTING', 'COMPLETED', 'CANCELLED'] as const).map((tab) => (
-              <Badge
+              <ToggleGroupItem
                 key={tab}
-                variant={activeTab === tab ? 'default' : 'outline'}
-                onClick={() => setActiveTab(tab)}
-                className={`cursor-pointer transition-colors ${
-                  activeTab === tab ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'hover:bg-slate-100'
-                }`}
+                value={tab}
+                className="h-11 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground sm:h-8"
               >
                 {tab === 'ALL' ? 'Semua' : tab}
-              </Badge>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
         </div>
       </Card>
 
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs flex items-center gap-2">
+        <Alert variant="destructive">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{errorMsg}</span>
-        </div>
+          <AlertDescription>{errorMsg}</AlertDescription>
+        </Alert>
       )}
 
       {/* Receivings Table */}

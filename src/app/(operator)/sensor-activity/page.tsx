@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useWebSocket } from '@/components/layout/ws-provider';
 
 export default function OperatorSensorActivityPage() {
@@ -53,7 +54,7 @@ export default function OperatorSensorActivityPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background dark:bg-card p-6 rounded-xl border border-border shadow-xs">
         <div>
           <h1 className="text-xl font-bold text-foreground">Aktivitas Sensor (Operator)</h1>
           <p className="text-xs text-muted-foreground mt-1">
@@ -66,10 +67,10 @@ export default function OperatorSensorActivityPage() {
       </div>
 
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs flex items-center gap-2">
+        <Alert variant="destructive">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{errorMsg}</span>
-        </div>
+          <AlertDescription>{errorMsg}</AlertDescription>
+        </Alert>
       )}
 
       <Card className="border-border">
@@ -82,7 +83,7 @@ export default function OperatorSensorActivityPage() {
         <CardContent>
           <div className="rounded-md border border-border overflow-hidden">
             <Table>
-              <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
+              <TableHeader className="bg-muted ">
                 <TableRow>
                   <TableHead className="text-xs">Waktu</TableHead>
                   <TableHead className="text-xs">Tipe Event</TableHead>

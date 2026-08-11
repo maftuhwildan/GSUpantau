@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { ErrorState, LoadingState } from '@/components/ui/states';
 import { Radio, AlertCircle, PlayCircle, Layers } from 'lucide-react';
 import { useWebSocket } from '@/components/layout/ws-provider';
 
@@ -94,14 +96,14 @@ export default function OperatorActiveSessionPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-10">
       {/* Header & Line Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-card p-6 rounded-xl border border-border shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-background dark:bg-card p-6 rounded-xl border border-border shadow-xs">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-foreground">Console Penghitungan Sesi Aktif</h1>
             {sessionDetail ? (
               <StatusBadge tone="warning" className="animate-pulse">COUNTING</StatusBadge>
             ) : (
-              <Badge variant="outline" className="text-slate-500">IDLE / SIAP</Badge>
+              <StatusBadge tone="neutral">IDLE / SIAP</StatusBadge>
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
@@ -111,43 +113,37 @@ export default function OperatorActiveSessionPage() {
 
         {/* Line Selector Pills */}
         {lines.length > 0 && (
-          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-lg border">
-            <Layers className="h-4 w-4 text-slate-500 ml-1.5" />
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Jalur:</span>
-            <div className="flex gap-1">
+          <div className="flex items-center gap-2 bg-muted  p-1.5 rounded-lg border">
+            <Layers className="h-4 w-4 text-muted-foreground ml-1.5" />
+            <span className="text-xs font-semibold text-muted-foreground ">Jalur:</span>
+            <ToggleGroup
+              type="single"
+              value={selectedLineId || undefined}
+              onValueChange={(value) => value && setSelectedLineId(value)}
+              variant="outline"
+              spacing={0}
+              aria-label="Pilih jalur counting"
+            >
               {lines.map((l) => (
-                <button
+                <ToggleGroupItem
                   key={l.id}
-                  onClick={() => setSelectedLineId(l.id)}
-                  className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
-                    selectedLineId === l.id
-                      ? 'bg-purple-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800'
-                  }`}
+                  value={l.id}
+                  aria-label={`Pilih ${l.name}`}
+                  className="h-11 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground sm:h-8"
                 >
                   {l.name}
-                </button>
+                </ToggleGroupItem>
               ))}
-            </div>
+            </ToggleGroup>
           </div>
         )}
       </div>
 
       {/* Main Content Area */}
       {loading && !sessionDetail ? (
-        <Card className="p-12 text-center text-xs text-muted-foreground">
-          Memuat informasi sesi aktif...
-        </Card>
+        <LoadingState label="Memuat informasi sesi aktif" rows={4} />
       ) : error ? (
-        <Card className="p-6 border-red-200 bg-red-50 text-red-700 text-xs flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4" />
-            <span>{error}</span>
-          </div>
-          <Button size="sm" variant="outline" onClick={fetchActiveSession}>
-            Coba Lagi
-          </Button>
-        </Card>
+        <ErrorState description={error} onRetry={fetchActiveSession} />
       ) : sessionDetail ? (
         <CountingConsole
           session={sessionDetail}
@@ -160,8 +156,8 @@ export default function OperatorActiveSessionPage() {
       ) : (
         /* Empty State when line is IDLE */
         <Card className="border-dashed border-2 p-12 text-center space-y-4">
-          <div className="mx-auto w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center text-purple-600">
-            <Radio className="h-6 w-6 text-purple-600" />
+          <div className="mx-auto w-12 h-12 rounded-full bg-primary/10  flex items-center justify-center text-primary">
+            <Radio className="h-6 w-6 text-primary" />
           </div>
           <div className="space-y-1">
             <h3 className="text-base font-bold text-foreground">Jalur Ini Sedang Tidak Memiliki Sesi Aktif</h3>
@@ -170,7 +166,7 @@ export default function OperatorActiveSessionPage() {
             </p>
           </div>
           <div className="pt-2">
-            <Button asChild className="bg-purple-600 hover:bg-purple-500 text-white text-xs gap-2">
+            <Button asChild className="bg-primary hover:bg-primary text-primary-foreground text-xs gap-2">
               <Link href="/operator/receiving-queue">
                 <PlayCircle className="h-4 w-4" />
                 <span>Pilih dari Antrean Surat Jalan</span>

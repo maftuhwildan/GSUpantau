@@ -10,6 +10,7 @@ import { StartCountingDialog } from '@/components/receiving/start-counting-dialo
 import { useWebSocket } from '@/components/layout/ws-provider';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function OperatorReceivingQueuePage() {
   const [receivings, setReceivings] = useState<ReceivingData[]>([]);
@@ -82,18 +83,17 @@ export default function OperatorReceivingQueuePage() {
         </>} />
 
       {/* Operator Restrictions Banner */}
-      <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 flex items-start gap-3 text-xs text-amber-900 dark:text-amber-300">
-        <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-        <div>
-          <strong>Batas Wewenang Operator:</strong> Operator dapat memulai (<em>Start Counting</em>) truck berstatus WAITING. Pembuatan, penerbitan, atau revisi data Surat Jalan hanya dapat dilakukan oleh Admin.
-        </div>
-      </div>
+      <Alert variant="warning">
+        <ShieldAlert className="h-5 w-5 text-warning-foreground shrink-0 mt-0.5" />
+        <AlertTitle>Batas Wewenang Operator</AlertTitle>
+        <AlertDescription>Operator dapat memulai (<em>Start Counting</em>) truck berstatus WAITING. Pembuatan, penerbitan, atau revisi data Surat Jalan hanya dapat dilakukan oleh Admin.</AlertDescription>
+      </Alert>
 
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs flex items-center gap-2">
+        <Alert variant="destructive">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{errorMsg}</span>
-        </div>
+          <AlertDescription>{errorMsg}</AlertDescription>
+        </Alert>
       )}
 
       {/* Queue Table */}
@@ -101,7 +101,7 @@ export default function OperatorReceivingQueuePage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold flex items-center justify-between">
             <span className="flex items-center gap-2">
-              <Layers className="h-4 w-4 text-purple-600" />
+              <Layers className="h-4 w-4 text-primary" />
               Daftar Antrean Truck Berjalan
             </span>
           </CardTitle>

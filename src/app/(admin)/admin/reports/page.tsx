@@ -1,15 +1,27 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Download, RefreshCw, AlertCircle, RotateCcw } from 'lucide-react';
+import { Download, RefreshCw, AlertCircle, RotateCcw, FileText, CheckCircle2, Scale, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { DateRangePicker, type DateOnlyRange } from '@/components/ui/date-picker';
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { getRecentReceivingChartData } from '@/lib/chart-data';
+import { appendDateRangeParams } from '@/lib/ui-date';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { KpiCard } from '@/components/dashboard/KpiCard';
+import { LoadingState } from '@/components/ui/states';
+
+const receivingChartConfig = {
+  manifest: { label: 'Manifest', color: 'var(--metric-manifest)' },
+  actual: { label: 'Actual', color: 'var(--metric-actual)' },
+} satisfies ChartConfig;
 
 export default function AdminReportsPage() {
   const [data, setData] = useState<any>(null);
@@ -18,8 +30,7 @@ export default function AdminReportsPage() {
   const [errorMsg, setErrorMsg] = useState('');
 
   // Filter States
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateRange, setDateRange] = useState<DateOnlyRange>({});
   const [lineId, setLineId] = useState('ALL');
 
   const fetchLines = useCallback(async () => {
@@ -40,8 +51,7 @@ export default function AdminReportsPage() {
       setErrorMsg('');
 
       const params = new URLSearchParams();
-      if (dateFrom) params.append('date_from', dateFrom);
-      if (dateTo) params.append('date_to', dateTo);
+      appendDateRangeParams(params, dateRange);
       if (lineId && lineId !== 'ALL') params.append('line_id', lineId);
 
       const res = await fetch(`/api/reports?${params.toString()}`);
@@ -55,7 +65,7 @@ export default function AdminReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [dateFrom, dateTo, lineId]);
+  }, [dateRange, lineId]);
 
   useEffect(() => {
     fetchLines();
@@ -66,15 +76,13 @@ export default function AdminReportsPage() {
   }, [fetchReports]);
 
   const handleResetFilters = () => {
-    setDateFrom('');
-    setDateTo('');
+    setDateRange({});
     setLineId('ALL');
   };
 
   const handleExportCSV = () => {
     const params = new URLSearchParams();
-    if (dateFrom) params.append('date_from', dateFrom);
-    if (dateTo) params.append('date_to', dateTo);
+    appendDateRangeParams(params, dateRange);
     if (lineId && lineId !== 'ALL') params.append('line_id', lineId);
     params.append('format', 'csv');
 
@@ -93,34 +101,23 @@ export default function AdminReportsPage() {
         </>} />
 
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs flex items-center gap-2">
+        <Alert variant="destructive">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{errorMsg}</span>
-        </div>
+          <AlertDescription>{errorMsg}</AlertDescription>
+        </Alert>
       )}
 
       {/* Interactive Filters Card */}
       <Card className="border-border p-4">
         <div className="flex flex-col lg:flex-row items-end gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 w-full">
             <div>
-              <Label htmlFor="report-date-from">Tanggal Dari</Label>
-              <Input
-                id="report-date-from"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="h-9 text-xs"
-              />
-            </div>
-            <div>
-              <Label htmlFor="report-date-to">Tanggal Sampai</Label>
-              <Input
-                id="report-date-to"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="h-9 text-xs"
+              <Label htmlFor="report-date-range">Rentang Tanggal</Label>
+              <DateRangePicker
+                id="report-date-range"
+                value={dateRange}
+                onValueChange={setDateRange}
+                disabled={loading}
               />
             </div>
             <div>
@@ -145,57 +142,45 @@ export default function AdminReportsPage() {
       </Card>
 
       {loading && !data && (
-        <div className="p-12 text-center text-muted-foreground">
-          <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-purple-600" />
-          <p className="text-sm font-medium">Memuat laporan...</p>
-        </div>
+        <LoadingState label="Memuat laporan" rows={4} />
       )}
 
       {data && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="border-border">
-              <CardContent className="p-4">
-                <p className="text-xs text-muted-foreground font-medium">Total Manifest Selesai</p>
-                <p className="text-2xl font-bold text-foreground mt-1">{(data.summary?.totalManifest || 0).toLocaleString('id-ID')}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Filter Terpilih</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border">
-              <CardContent className="p-4">
-                <p className="text-xs text-muted-foreground font-medium">Total Actual Dihitung</p>
-                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{(data.summary?.totalActual || 0).toLocaleString('id-ID')}</p>
-                <p className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 mt-0.5">Filter Terpilih</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border">
-              <CardContent className="p-4">
-                <p className="text-xs text-muted-foreground font-medium">Variance (Selisih)</p>
-                <p className={`text-2xl font-bold mt-1 ${data.summary?.totalDifference < 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                  {data.summary?.totalDifference > 0 ? '+' : ''}{(data.summary?.totalDifference || 0).toLocaleString('id-ID')}
-                </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{data.summary?.totalDifferencePercent || 0}% Total</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border">
-              <CardContent className="p-4">
-                <p className="text-xs text-muted-foreground font-medium">Kualitas Deteksi Sensor</p>
-                <div className="flex justify-between items-center mt-1">
-                  <div>
-                    <p className="text-sm font-bold text-emerald-600">{(data.summary?.assignedDetections || 0).toLocaleString('id-ID')}</p>
-                    <p className="text-[10px] text-muted-foreground">Assigned</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-amber-600">{(data.summary?.unassignedDetections || 0).toLocaleString('id-ID')}</p>
-                    <p className="text-[10px] text-muted-foreground">Unassigned</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <KpiCard label="Total Manifest Selesai" value={(data.summary?.totalManifest || 0).toLocaleString('id-ID')} detail="Filter terpilih" icon={FileText} />
+            <KpiCard label="Total Actual Dihitung" value={(data.summary?.totalActual || 0).toLocaleString('id-ID')} detail="Filter terpilih" icon={CheckCircle2} tone="success" />
+            <KpiCard label="Variance (Selisih)" value={`${data.summary?.totalDifference > 0 ? '+' : ''}${(data.summary?.totalDifference || 0).toLocaleString('id-ID')}`} detail={`${data.summary?.totalDifferencePercent || 0}% Total`} icon={Scale} tone={data.summary?.totalDifference < 0 ? 'warning' : 'success'} />
+            <KpiCard label="Kualitas Deteksi Sensor" value={`${(data.summary?.assignedDetections || 0).toLocaleString('id-ID')} / ${(data.summary?.unassignedDetections || 0).toLocaleString('id-ID')}`} detail="Assigned / Unassigned" icon={Radio} tone="info" />
           </div>
+
+          {getRecentReceivingChartData(data.list).length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Manifest vs Actual</CardTitle>
+                <CardDescription>12 penerimaan terbaru dari hasil filter aktif.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={receivingChartConfig} className="h-[420px] w-full">
+                  <BarChart accessibilityLayer data={getRecentReceivingChartData(data.list)} layout="vertical" margin={{ left: 8, right: 16 }}>
+                    <CartesianGrid horizontal={false} />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="label" type="category" width={88} tickLine={false} axisLine={false} tickFormatter={(value) => String(value).slice(0, 12)} />
+                    <ChartTooltip
+                      cursor={false}
+                      content={<ChartTooltipContent labelFormatter={(_, payload) => {
+                        const item = payload?.[0]?.payload;
+                        return item ? `${item.deliveryNoteNumber} • ${item.receivingDate} • ${item.licensePlateSnapshot}` : '';
+                      }} />}
+                    />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <Bar dataKey="manifest" fill="var(--color-manifest)" radius={4} />
+                    <Bar dataKey="actual" fill="var(--color-actual)" radius={4} />
+                  </BarChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="border-border">
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
@@ -212,7 +197,7 @@ export default function AdminReportsPage() {
             <CardContent>
               <div className="rounded-md border border-border overflow-hidden">
                 <Table>
-                  <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
+                  <TableHeader className="bg-muted ">
                     <TableRow>
                       <TableHead className="text-xs w-[120px]">Tanggal</TableHead>
                       <TableHead className="text-xs">No. SJ / Truck</TableHead>
@@ -244,8 +229,8 @@ export default function AdminReportsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs text-right font-medium">{item.manifestCount.toLocaleString('id-ID')}</TableCell>
-                          <TableCell className="text-xs text-right font-medium text-emerald-600 dark:text-emerald-400">{item.actualCount.toLocaleString('id-ID')}</TableCell>
-                          <TableCell className={`text-xs text-right font-medium ${item.differenceCount < 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                          <TableCell className="text-xs text-right font-medium text-success ">{item.actualCount.toLocaleString('id-ID')}</TableCell>
+                          <TableCell className={`text-xs text-right font-medium ${item.differenceCount < 0 ? 'text-warning-foreground ' : 'text-success '}`}>
                             {item.differenceCount > 0 ? '+' : ''}{item.differenceCount.toLocaleString('id-ID')}
                           </TableCell>
                           <TableCell className="text-xs text-right">{item.differencePercent}%</TableCell>

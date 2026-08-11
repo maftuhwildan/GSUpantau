@@ -5,7 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Play, Clock, Edit, FileText, XCircle } from 'lucide-react';
+import { EmptyState, LoadingState } from '@/components/ui/states';
 
 export interface ReceivingData {
   id: string;
@@ -48,19 +50,11 @@ export function QueueTable({
   loading = false,
 }: QueueTableProps) {
   if (loading) {
-    return (
-      <div className="p-8 text-center text-xs text-muted-foreground">
-        Memuat data Surat Jalan...
-      </div>
-    );
+    return <LoadingState label="Memuat data Surat Jalan" />;
   }
 
   if (receivings.length === 0) {
-    return (
-      <div className="p-8 text-center text-xs text-muted-foreground">
-        Belum ada data Surat Jalan yang tersedia.
-      </div>
-    );
+    return <EmptyState title="Belum ada Surat Jalan" description="Data yang sesuai filter akan muncul di sini." />;
   }
 
   const renderStatus = (receiving: ReceivingData) => {
@@ -133,37 +127,37 @@ export function QueueTable({
       </div>
 
       <div className="hidden overflow-x-auto md:block">
-      <table className="w-full text-left text-xs">
-        <thead className="border-b border-border bg-muted/60 font-semibold text-foreground">
-          <tr>
-            <th className="p-3 w-10 text-center">Pos</th>
-            <th className="p-3">No. Surat Jalan</th>
-            <th className="p-3">Plat & Supir</th>
-            <th className="p-3">Supplier</th>
-            <th className="p-3">Jalur (Line)</th>
-            <th className="p-3 text-right">Manifest</th>
-            <th className="p-3 text-right">Actual Sensor</th>
-            <th className="p-3 text-right">Selisih</th>
-            <th className="p-3 text-center">Status</th>
-            <th className="p-3 text-right">Aksi</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
+      <Table>
+        <TableHeader className="bg-muted/60">
+          <TableRow>
+            <TableHead className="w-10 text-center">Pos</TableHead>
+            <TableHead>No. Surat Jalan</TableHead>
+            <TableHead>Plat & Supir</TableHead>
+            <TableHead>Supplier</TableHead>
+            <TableHead>Jalur (Line)</TableHead>
+            <TableHead className="text-right">Manifest</TableHead>
+            <TableHead className="text-right">Actual Sensor</TableHead>
+            <TableHead className="text-right">Selisih</TableHead>
+            <TableHead className="text-center">Status</TableHead>
+            <TableHead className="text-right">Aksi</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {receivings.map((r) => (
-            <tr key={r.id} className="transition-colors hover:bg-muted/40">
-              <td className="p-3 text-center font-bold text-slate-500">
+            <TableRow key={r.id}>
+              <TableCell className="text-center font-bold text-muted-foreground">
                 {r.status === 'WAITING' || r.status === 'COUNTING' ? r.queuePosition : '-'}
-              </td>
-              <td className="p-3 font-semibold text-foreground">
+              </TableCell>
+              <TableCell className="font-semibold text-foreground">
                 <div>{r.deliveryNoteNumber}</div>
                 <div className="text-[10px] font-mono text-muted-foreground">{r.receivingNumber}</div>
-              </td>
-              <td className="p-3">
+              </TableCell>
+              <TableCell>
                 <div className="font-bold text-primary">{r.licensePlateSnapshot}</div>
                 <div className="text-[11px] text-muted-foreground">{r.driverNameSnapshot}</div>
-              </td>
-              <td className="p-3 text-muted-foreground">{r.supplierNameSnapshot}</td>
-              <td className="p-3 text-muted-foreground">
+              </TableCell>
+              <TableCell className="text-muted-foreground">{r.supplierNameSnapshot}</TableCell>
+              <TableCell className="text-muted-foreground">
                 {r.lineName ? (
                   <Badge variant="outline" className="text-[10px]">
                     {r.lineName}
@@ -171,16 +165,16 @@ export function QueueTable({
                 ) : (
                   <span className="text-[11px] text-muted-foreground italic">-</span>
                 )}
-              </td>
-              <td className="p-3 text-right font-bold text-foreground">
+              </TableCell>
+              <TableCell className="text-right font-bold text-foreground">
                 {r.manifestCount.toLocaleString('id-ID')} ekor
-              </td>
-              <td className="p-3 text-right font-bold text-primary">
+              </TableCell>
+              <TableCell className="text-right font-bold text-primary">
                 {r.actualCount !== null && r.actualCount !== undefined
                   ? `${r.actualCount.toLocaleString('id-ID')} ekor`
                   : <span className="text-muted-foreground font-normal italic">Belum dihitung</span>}
-              </td>
-              <td className="p-3 text-right font-bold">
+              </TableCell>
+              <TableCell className="text-right font-bold">
                 {r.differenceCount !== null && r.differenceCount !== undefined ? (
                   <span className={r.differenceCount < 0 ? 'text-destructive' : r.differenceCount > 0 ? 'text-success' : 'text-muted-foreground'}>
                     {r.differenceCount > 0 ? `+${r.differenceCount}` : r.differenceCount} ekor
@@ -189,17 +183,17 @@ export function QueueTable({
                 ) : (
                   <span className="text-muted-foreground font-normal">-</span>
                 )}
-              </td>
-              <td className="p-3 text-center">
+              </TableCell>
+              <TableCell className="text-center">
                 {renderStatus(r)}
-              </td>
-              <td className="p-3 text-right">
+              </TableCell>
+              <TableCell className="text-right">
                 {renderActions(r)}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
       </div>
     </>
   );
