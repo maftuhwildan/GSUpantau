@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useWebSocket } from '@/components/layout/ws-provider';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function AdminSensorActivityPage() {
   const [events, setEvents] = useState<any[]>([]);
@@ -54,17 +55,11 @@ export default function AdminSensorActivityPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background dark:bg-card p-6 rounded-xl border border-border shadow-xs">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Sensor Activity (Admin)</h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Pantau arus data mentah dari perangkat ESP32 di semua line.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={fetchEvents} className="text-xs gap-1">
+      <PageHeader title="Aktivitas Sensor" description="Pantau arus data perangkat ESP32 di seluruh line." eyebrow="Admin" actions={
+        <Button variant="outline" size="sm" onClick={fetchEvents}>
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </Button>
-      </div>
+      } />
 
       {errorMsg && (
         <Alert variant="destructive">
@@ -73,9 +68,9 @@ export default function AdminSensorActivityPage() {
         </Alert>
       )}
 
-      <Card className="border-border">
+      <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Log Sensor Terakhir (100 Event)</CardTitle>
+          <CardTitle>Log Sensor Terakhir (100 Event)</CardTitle>
           <CardDescription className="text-xs">
             Menampilkan event DETECTION, HEARTBEAT, dan DEVICE_RESTART.
           </CardDescription>
@@ -105,7 +100,7 @@ export default function AdminSensorActivityPage() {
                       <TableCell className="text-xs">{new Date(evt.deviceTime).toLocaleString()}</TableCell>
                       <TableCell>
                         <div className="font-medium text-xs">{evt.device?.deviceCode || '-'}</div>
-                        <div className="text-[10px] text-muted-foreground">{evt.line?.name || '-'}</div>
+                        <div className="text-xs text-muted-foreground">{evt.line?.name || '-'}</div>
                       </TableCell>
                       <TableCell className="text-xs">
                         <Badge variant={evt.eventType === 'DETECTION' ? 'default' : 'outline'}>

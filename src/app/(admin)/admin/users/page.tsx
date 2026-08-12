@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { LoadingState } from "@/components/ui/states";
+import { PageHeader } from "@/components/layout/PageHeader";
 import {
   Dialog,
   DialogContent,
@@ -215,24 +216,20 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-background dark:bg-card p-6 rounded-xl border border-border shadow-xs">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Kelola Pengguna & Peran (User Management)</h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Manajemen pengguna sistem RPA. Peran MVP dibatasi: OPERATOR (terikat ke Line) dan ADMIN.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchData} className="text-xs gap-1">
+      <PageHeader
+        title="Kelola Pengguna & Peran"
+        description="Manajemen pengguna RPA dengan peran OPERATOR yang terikat ke line dan ADMIN."
+        actions={<>
+          <Button variant="outline" size="sm" onClick={fetchData} className="gap-1">
             <RefreshCw className="h-3.5 w-3.5" />
             <span>Muat Ulang</span>
           </Button>
-          <Button onClick={handleOpenAdd} className="bg-primary hover:bg-primary text-primary-foreground text-xs gap-1.5">
+          <Button onClick={handleOpenAdd} size="sm">
             <UserPlus className="h-4 w-4" />
             <span>Tambah Pengguna Baru</span>
           </Button>
-        </div>
-      </div>
+        </>}
+      />
 
       {error && (
         <Alert variant="destructive">
@@ -241,9 +238,9 @@ export default function AdminUsersPage() {
         </Alert>
       )}
 
-      <Card className="border-border">
+      <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Daftar Pengguna Terdaftar</CardTitle>
+          <CardTitle>Daftar Pengguna Terdaftar</CardTitle>
           <CardDescription className="text-xs">
             Password tersimpan dalam bentuk hash bcrypt (min 12 karakter) dan sesi menggunakan cookie HttpOnly.
           </CardDescription>
@@ -277,15 +274,15 @@ export default function AdminUsersPage() {
                       const isAdmin = u.roles.includes("ADMIN");
                       return (
                         <TableRow key={u.id}>
-                          <TableCell className="font-semibold text-foreground">{u.name}</TableCell>
-                          <TableCell className="font-mono text-primary">{u.email}</TableCell>
+                          <TableCell className="font-medium text-foreground">{u.name}</TableCell>
+                          <TableCell className="text-muted-foreground">{u.email}</TableCell>
                           <TableCell className="text-center">
                             {isAdmin ? (
-                              <StatusBadge tone="primary" className="text-[10px] gap-1">
+                              <StatusBadge tone="primary" className="gap-1">
                                 <ShieldCheck className="h-3 w-3" /> ADMIN
                               </StatusBadge>
                             ) : (
-                              <StatusBadge tone="info" className="text-[10px] gap-1">
+                              <StatusBadge tone="info" className="gap-1">
                                 <UserCheck className="h-3 w-3" /> OPERATOR
                               </StatusBadge>
                             )}
@@ -303,11 +300,11 @@ export default function AdminUsersPage() {
                           </TableCell>
                           <TableCell className="text-center">
                             {u.status === "ACTIVE" ? (
-                              <StatusBadge tone="success" className="text-[10px]">
+                              <StatusBadge tone="success">
                                 AKTIF
                               </StatusBadge>
                             ) : (
-                              <StatusBadge tone="neutral" className="text-[10px]">
+                              <StatusBadge tone="neutral">
                                 INAKTIF
                               </StatusBadge>
                             )}
@@ -322,7 +319,7 @@ export default function AdminUsersPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => handleOpenEdit(u)}
-                              className="h-7 text-[11px]"
+                              className="h-7"
                             >
                               Edit / Reset
                             </Button>
@@ -342,7 +339,7 @@ export default function AdminUsersPage() {
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold">Tambah Pengguna Baru</DialogTitle>
+            <DialogTitle>Tambah Pengguna Baru</DialogTitle>
             <DialogDescription className="text-xs">
               Password minimal 12 karakter. Operator wajib memilih Line tugas.
             </DialogDescription>
@@ -388,7 +385,7 @@ export default function AdminUsersPage() {
                 placeholder="Password rahasia minimal 12 huruf/angka"
                 required
                 minLength={12}
-                className="text-xs font-mono"
+                className="text-xs"
               />
             </div>
 
@@ -431,7 +428,6 @@ export default function AdminUsersPage() {
               <Button
                 type="submit"
                 disabled={addSubmitting}
-                className="bg-primary hover:bg-primary text-primary-foreground text-xs"
               >
                 {addSubmitting ? "Menyimpan..." : "Simpan Pengguna"}
               </Button>
@@ -444,7 +440,7 @@ export default function AdminUsersPage() {
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold">Edit Pengguna & Reset Password</DialogTitle>
+            <DialogTitle>Edit Pengguna & Reset Password</DialogTitle>
             <DialogDescription className="text-xs">
               Ubah data akun pengguna atau setel ulang password (kosongkan password jika tidak ingin diubah).
             </DialogDescription>
@@ -490,7 +486,7 @@ export default function AdminUsersPage() {
                 onChange={(e) => setEditPassword(e.target.value)}
                 placeholder="Biarkan kosong jika tidak mereset password"
                 minLength={12}
-                className="text-xs font-mono"
+                className="text-xs"
               />
             </div>
 
@@ -533,7 +529,6 @@ export default function AdminUsersPage() {
               <Button
                 type="submit"
                 disabled={editSubmitting}
-                className="bg-primary hover:bg-primary text-primary-foreground text-xs"
               >
                 {editSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
               </Button>

@@ -19,8 +19,8 @@ import { KpiCard } from '@/components/dashboard/KpiCard';
 import { LoadingState } from '@/components/ui/states';
 
 const receivingChartConfig = {
-  manifest: { label: 'Manifest', color: 'var(--metric-manifest)' },
-  actual: { label: 'Actual', color: 'var(--metric-actual)' },
+  manifest: { label: 'Manifest', color: 'var(--chart-1)' },
+  actual: { label: 'Actual', color: 'var(--chart-2)' },
 } satisfies ChartConfig;
 
 export default function AdminReportsPage() {
@@ -92,10 +92,10 @@ export default function AdminReportsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Laporan Operasional" description="Laporan penerimaan, actual vs manifest, dan efisiensi sensor." actions={<>
-          <Button variant="outline" size="sm" onClick={fetchReports} disabled={loading} className="text-xs gap-1">
+          <Button variant="outline" size="sm" onClick={fetchReports} disabled={loading} className="gap-1">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
-          <Button size="sm" onClick={handleExportCSV} disabled={loading || !data} className="text-xs gap-1">
+          <Button size="sm" onClick={handleExportCSV} disabled={loading || !data} className="gap-1">
             <Download className="h-3.5 w-3.5" /> Export CSV
           </Button>
         </>} />
@@ -108,7 +108,7 @@ export default function AdminReportsPage() {
       )}
 
       {/* Interactive Filters Card */}
-      <Card className="border-border p-4">
+      <Card className="p-4">
         <div className="flex flex-col lg:flex-row items-end gap-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 w-full">
             <div>
@@ -134,7 +134,7 @@ export default function AdminReportsPage() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
-            <Button variant="outline" size="sm" onClick={handleResetFilters} disabled={loading} className="h-9 text-xs gap-1">
+            <Button variant="outline" size="sm" onClick={handleResetFilters} disabled={loading} className="h-9 gap-1">
               <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
             </Button>
           </div>
@@ -182,10 +182,10 @@ export default function AdminReportsPage() {
             </Card>
           )}
 
-          <Card className="border-border">
+          <Card>
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-base font-semibold">Riwayat Penerimaan Selesai</CardTitle>
+                <CardTitle>Riwayat Penerimaan Selesai</CardTitle>
                 <CardDescription className="text-xs">
                   Daftar semua truck yang telah selesai dihitung sesuai filter.
                 </CardDescription>
@@ -220,20 +220,20 @@ export default function AdminReportsPage() {
                         <TableRow key={item.id}>
                           <TableCell className="text-xs">{item.receivingDate}</TableCell>
                           <TableCell>
-                            <div className="font-medium text-xs text-foreground">{item.deliveryNoteNumber}</div>
-                            <div className="text-[10px] text-muted-foreground">{item.licensePlateSnapshot}</div>
+                            <div className="font-medium text-foreground">{item.deliveryNoteNumber}</div>
+                            <div className="text-xs text-muted-foreground">{item.licensePlateSnapshot}</div>
                           </TableCell>
                           <TableCell className="text-xs">
-                            <Badge variant="secondary" className="text-[10px]">
+                            <Badge variant="secondary">
                               {item.line?.lineCode || item.line?.name || '-'}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-xs text-right font-medium">{item.manifestCount.toLocaleString('id-ID')}</TableCell>
-                          <TableCell className="text-xs text-right font-medium text-success ">{item.actualCount.toLocaleString('id-ID')}</TableCell>
-                          <TableCell className={`text-xs text-right font-medium ${item.differenceCount < 0 ? 'text-warning-foreground ' : 'text-success '}`}>
+                          <TableCell className="text-xs text-right font-normal tabular-nums">{item.manifestCount.toLocaleString('id-ID')}</TableCell>
+                          <TableCell className="text-xs text-right font-normal tabular-nums text-success">{item.actualCount.toLocaleString('id-ID')}</TableCell>
+                          <TableCell className={`text-xs text-right font-normal tabular-nums ${item.differenceCount < 0 ? 'text-warning-foreground' : 'text-success'}`}>
                             {item.differenceCount > 0 ? '+' : ''}{item.differenceCount.toLocaleString('id-ID')}
                           </TableCell>
-                          <TableCell className="text-xs text-right">{item.differencePercent}%</TableCell>
+                          <TableCell className="text-xs text-right font-normal tabular-nums">{item.differencePercent}%</TableCell>
                         </TableRow>
                       ))
                     )}

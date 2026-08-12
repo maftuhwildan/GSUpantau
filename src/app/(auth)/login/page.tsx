@@ -54,7 +54,7 @@ export default function LoginPage() {
   return (
     <main className="relative flex min-h-svh items-center justify-center overflow-hidden bg-muted/30 p-4">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-linear-to-b from-primary/10 to-transparent" />
-      <Card className="relative w-full max-w-md shadow-xl">
+      <Card className="relative w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
           <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20"><Bird className="size-7" /></span>
           <CardTitle className="font-heading text-2xl">Masuk ke GSU Pantau</CardTitle>

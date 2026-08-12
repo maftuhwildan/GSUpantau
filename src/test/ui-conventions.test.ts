@@ -39,4 +39,68 @@ describe("konvensi UI shadcn dan semantic tokens", () => {
 
     expect(violations).toEqual([])
   })
+
+  it("tidak memakai typography dengan bobot berlebihan", () => {
+    const heavyTypographyPattern = /\bfont-(?:bold|extrabold|black)\b/g
+    const violations = applicationSources.flatMap((file) => {
+      const matches = readFileSync(file, "utf8").match(heavyTypographyPattern) ?? []
+      return matches.map((match) => `${path.relative(process.cwd(), file)}: ${match}`)
+    })
+
+    expect(violations).toEqual([])
+  })
+
+  it("tidak memakai arbitrary text sizes (text-[...]) di kode aplikasi", () => {
+    const arbitraryTextSizePattern = /\btext-\[[^\]]+\]/g
+    const violations = applicationSources.flatMap((file) => {
+      const matches = readFileSync(file, "utf8").match(arbitraryTextSizePattern) ?? []
+      return matches.map((match) => `${path.relative(process.cwd(), file)}: ${match}`)
+    })
+
+    expect(violations).toEqual([])
+  })
+
+  it("membatasi Alert ke variant resmi default dan destructive", () => {
+    const nonstandardAlertPattern = /<Alert\b[^>]*\bvariant=["'](?:success|warning|info)["']/g
+    const violations = applicationSources.flatMap((file) => {
+      const matches = readFileSync(file, "utf8").match(nonstandardAlertPattern) ?? []
+      return matches.map((match) => `${path.relative(process.cwd(), file)}: ${match}`)
+    })
+
+    expect(violations).toEqual([])
+  })
+
+  it("memakai palette chart shadcn, bukan token metric lama", () => {
+    const legacyChartPattern = /var\(--metric-(?:manifest|actual|assigned|unassigned)\)/g
+    const violations = applicationSources.flatMap((file) => {
+      const matches = readFileSync(file, "utf8").match(legacyChartPattern) ?? []
+      return matches.map((match) => `${path.relative(process.cwd(), file)}: ${match}`)
+    })
+
+    expect(violations).toEqual([])
+  })
+
+  it("mempertahankan form Surat Jalan yang terstruktur dan field urutan dokumen", () => {
+    const formSource = readFileSync(
+      path.resolve("src/components/receiving/receiving-form-dialog.tsx"),
+      "utf8"
+    )
+
+    expect(formSource).toContain("Collapsible")
+    expect(formSource).toContain("Isi dari data master")
+    expect(formSource).toContain('id="document-truck-sequence"')
+    expect(formSource).toContain("documentTruckSequence")
+  })
+
+  it("memastikan tabel antrean Surat Jalan tidak menggunakan font-semibold atau font-mono pada data utama", () => {
+    const tableSource = readFileSync(
+      path.resolve("src/components/receiving/queue-table.tsx"),
+      "utf8"
+    )
+
+    expect(tableSource).not.toMatch(/TableCell[^>]*font-semibold/)
+    expect(tableSource).not.toMatch(/r\.deliveryNoteNumber[^}]*font-mono/)
+    expect(tableSource).not.toMatch(/r\.receivingNumber[^}]*font-mono/)
+    expect(tableSource).toContain("font-normal tabular-nums")
+  })
 })

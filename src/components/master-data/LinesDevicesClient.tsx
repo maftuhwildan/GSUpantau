@@ -645,7 +645,7 @@ export default function LinesDevicesClient() {
                   <div className="flex items-center gap-3">
                     <GitBranch className="h-4 w-4 text-primary" />
                     <div>
-                      <CardTitle className="text-base font-semibold">
+                      <CardTitle>
                         {line.lineCode}{' '}
                         <span className="text-muted-foreground font-normal">— {line.name}</span>
                       </CardTitle>
@@ -655,7 +655,7 @@ export default function LinesDevicesClient() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <StatusBadge tone={lineStatusVariant(line.status)} className="text-[10px]">
+                    <StatusBadge tone={lineStatusVariant(line.status)}>
                       {lineStatusLabel(line.status)}
                     </StatusBadge>
                     <Button
@@ -672,7 +672,7 @@ export default function LinesDevicesClient() {
                       id={`btn-add-device-to-line-${line.id}`}
                       variant="outline"
                       size="sm"
-                      className="h-7 text-xs"
+                      className="h-7"
                       onClick={() => openCreateDevice(line.id)}
                     >
                       <Plus className="h-3 w-3 mr-1" />
@@ -703,7 +703,7 @@ export default function LinesDevicesClient() {
                     <TableBody>
                       {line.devices.map((device) => (
                         <TableRow key={device.id}>
-                          <TableCell className="text-xs font-mono font-semibold text-primary ">
+                          <TableCell className="font-medium text-foreground">
                             <span className="flex items-center gap-1">
                               <Cpu className="h-3 w-3" />
                               {device.deviceCode}
@@ -713,7 +713,7 @@ export default function LinesDevicesClient() {
                           <TableCell>
                             <StatusBadge
                               tone={deviceStatusVariant(device.status)}
-                              className="text-[10px] gap-1"
+                              className="gap-1"
                             >
                               <Radio
                                 className={`h-2.5 w-2.5 ${device.status === 'ONLINE' ? 'animate-pulse' : ''}`}

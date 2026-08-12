@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useWebSocket } from '@/components/layout/ws-provider';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function OperatorSensorActivityPage() {
   const [events, setEvents] = useState<any[]>([]);
@@ -54,17 +55,11 @@ export default function OperatorSensorActivityPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background dark:bg-card p-6 rounded-xl border border-border shadow-xs">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Aktivitas Sensor (Operator)</h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Pantau data sensor secara realtime untuk memastikan alat berjalan normal.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={fetchEvents} className="text-xs gap-1">
+      <PageHeader title="Aktivitas Sensor" description="Pantau data sensor realtime untuk memastikan perangkat berjalan normal." eyebrow="Operator" actions={
+        <Button variant="outline" size="sm" onClick={fetchEvents}>
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </Button>
-      </div>
+      } />
 
       {errorMsg && (
         <Alert variant="destructive">
@@ -73,7 +68,7 @@ export default function OperatorSensorActivityPage() {
         </Alert>
       )}
 
-      <Card className="border-border">
+      <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">Log Deteksi Terakhir (100 Event)</CardTitle>
           <CardDescription className="text-xs">
