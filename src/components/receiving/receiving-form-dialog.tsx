@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogHeader,
@@ -16,7 +18,7 @@ import {
   DialogContent,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { AlertCircle, FileText, Truck, User, Building2, Hash, CalendarDays, Layers } from 'lucide-react';
+import { AlertCircle, ChevronDown, Database, FileText, Layers, Truck } from 'lucide-react';
 import { getTodayDateOnly } from '@/lib/ui-date';
 
 interface ReceivingItem {
@@ -91,6 +93,7 @@ export function ReceivingFormDialog({
   const [lineId, setLineId] = useState('');
   const [notes, setNotes] = useState('');
   const [reason, setReason] = useState('');
+  const [masterDataOpen, setMasterDataOpen] = useState(false);
 
   const [trucks, setTrucks] = useState<TruckOption[]>([]);
   const [drivers, setDrivers] = useState<DriverOption[]>([]);
@@ -125,6 +128,7 @@ export function ReceivingFormDialog({
         setLineId(receivingToEdit.lineId || '');
         setNotes(receivingToEdit.notes || '');
         setReason('');
+        setMasterDataOpen(Boolean(receivingToEdit.truckId || receivingToEdit.driverId || receivingToEdit.supplierId));
       } else {
         setDeliveryNoteNumber('');
         setReceivingDate(getTodayDateOnly());
@@ -140,6 +144,7 @@ export function ReceivingFormDialog({
         setLineId('');
         setNotes('');
         setReason('');
+        setMasterDataOpen(false);
       }
       setErrorMsg('');
     }
@@ -268,7 +273,7 @@ export function ReceivingFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-hidden p-0 sm:max-w-3xl">
+      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-hidden p-0 sm:max-w-2xl">
       <DialogHeader className="px-5 pt-5 sm:px-6 sm:pt-6">
         <DialogTitle className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" />
@@ -291,8 +296,8 @@ export function ReceivingFormDialog({
           )}
 
           {isManifestChanged && (
-            <Alert variant="warning">
-              <AlertCircle className="h-4 w-4" />
+            <Alert>
+              <AlertCircle className="h-4 w-4 text-warning" />
               <AlertTitle>Perhatian: Revisi Manifest pada Status WAITING</AlertTitle>
               <AlertDescription>
                 Jumlah manifest diubah dari <strong>{receivingToEdit?.manifestCount}</strong> menjadi{' '}
@@ -301,199 +306,242 @@ export function ReceivingFormDialog({
             </Alert>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="delivery-note-number"><FileText /> No. Surat Jalan *</Label>
-              <Input
-                id="delivery-note-number"
-                value={deliveryNoteNumber}
-                onChange={(e) => setDeliveryNoteNumber(e.target.value)}
-                placeholder="misal: SJ-2026-0807-001"
-                required
-                className="text-xs"
-              />
+          <section className="space-y-3">
+            <div className="flex items-start gap-2">
+              <FileText className="mt-0.5 size-4 text-muted-foreground" />
+              <div>
+                <h3 className="text-sm font-medium">Data Surat Jalan</h3>
+                <p className="text-xs text-muted-foreground">Identitas dokumen dan tanggal penerimaan.</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="delivery-note-number">No. Surat Jalan *</Label>
+                <Input
+                  id="delivery-note-number"
+                  value={deliveryNoteNumber}
+                  onChange={(e) => setDeliveryNoteNumber(e.target.value)}
+                  placeholder="misal: SJ-2026-0807-001"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="receiving-date">Tanggal Penerimaan *</Label>
+                <DatePicker
+                  id="receiving-date"
+                  value={receivingDate}
+                  onValueChange={setReceivingDate}
+                  required
+                />
+              </div>
+            </div>
+          </section>
+
+          <Separator />
+
+          <section className="space-y-4">
+            <div className="flex items-start gap-2">
+              <Truck className="mt-0.5 size-4 text-muted-foreground" />
+              <div>
+                <h3 className="text-sm font-medium">Identitas Pengiriman</h3>
+                <p className="text-xs text-muted-foreground">Data snapshot wajib tersimpan bersama riwayat receiving.</p>
+              </div>
             </div>
 
-            <div>
-              <Label htmlFor="receiving-date"><CalendarDays /> Tanggal Penerimaan *</Label>
-              <DatePicker
-                id="receiving-date"
-                value={receivingDate}
-                onValueChange={setReceivingDate}
-                required
-                className="text-xs"
-              />
-            </div>
-          </div>
+            <Collapsible open={masterDataOpen} onOpenChange={setMasterDataOpen} className="rounded-xl border">
+              <div className="flex items-center justify-between gap-3 p-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Database className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Isi dari data master</p>
+                    <p className="text-xs text-muted-foreground">Opsional, untuk mengisi snapshot secara otomatis.</p>
+                  </div>
+                </div>
+                <CollapsibleTrigger asChild>
+                  <Button type="button" variant="ghost" size="sm" className="group shrink-0">
+                    {masterDataOpen ? 'Tutup' : 'Pilih data'}
+                    <ChevronDown className="transition-transform group-data-[state=open]:rotate-180" />
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+              <CollapsibleContent className="border-t px-3 pb-3 pt-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="truck-master">Truck master</Label>
+                    <Select value={truckId} onValueChange={handleTruckSelect}>
+                      <SelectTrigger id="truck-master" className="w-full"><SelectValue placeholder="Pilih truck" /></SelectTrigger>
+                      <SelectContent>
+                        {trucks.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.licensePlate} {t.carrierName ? `(${t.carrierName})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="driver-master">Supir master</Label>
+                    <Select value={driverId} onValueChange={handleDriverSelect}>
+                      <SelectTrigger id="driver-master" className="w-full"><SelectValue placeholder="Pilih supir" /></SelectTrigger>
+                      <SelectContent>
+                        {drivers.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.name} {d.phone ? `(${d.phone})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="supplier-master">Supplier master</Label>
+                    <Select value={supplierId} onValueChange={handleSupplierSelect}>
+                      <SelectTrigger id="supplier-master" className="w-full"><SelectValue placeholder="Pilih supplier" /></SelectTrigger>
+                      <SelectContent>
+                        {suppliers.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name} ({s.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="truck-master"><Truck /> Pilih Truck Master (Opsional)</Label>
-              <Select value={truckId} onValueChange={handleTruckSelect}>
-                <SelectTrigger id="truck-master" className="w-full"><SelectValue placeholder="Pilih Truck" /></SelectTrigger>
-                <SelectContent>
-                {trucks.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.licensePlate} {t.carrierName ? `(${t.carrierName})` : ''}
-                  </SelectItem>
-                ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="license-plate-snapshot">Plat Nomor Truck (Snapshot) *</Label>
+                <Input
+                  id="license-plate-snapshot"
+                  value={licensePlateSnapshot}
+                  onChange={(e) => setLicensePlateSnapshot(e.target.value)}
+                  placeholder="misal: B 9101 RPA"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="driver-name-snapshot">Nama Supir (Snapshot) *</Label>
+                <Input
+                  id="driver-name-snapshot"
+                  value={driverNameSnapshot}
+                  onChange={(e) => setDriverNameSnapshot(e.target.value)}
+                  placeholder="misal: Budi Santoso"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="supplier-name-snapshot">Nama Supplier (Snapshot) *</Label>
+                <Input
+                  id="supplier-name-snapshot"
+                  value={supplierNameSnapshot}
+                  onChange={(e) => setSupplierNameSnapshot(e.target.value)}
+                  placeholder="misal: Farm Sukses Mandiri"
+                  required
+                />
+              </div>
             </div>
+          </section>
 
-            <div>
-              <Label htmlFor="license-plate-snapshot">Plat Nomor Truck (Snapshot) *</Label>
-              <Input
-                id="license-plate-snapshot"
-                value={licensePlateSnapshot}
-                onChange={(e) => setLicensePlateSnapshot(e.target.value)}
-                placeholder="misal: B 9101 RPA"
-                required
-                className="text-xs"
-              />
-            </div>
-          </div>
+          <Separator />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="driver-master"><User /> Pilih Supir Master (Opsional)</Label>
-              <Select value={driverId} onValueChange={handleDriverSelect}>
-                <SelectTrigger id="driver-master" className="w-full"><SelectValue placeholder="Pilih Supir" /></SelectTrigger>
-                <SelectContent>
-                {drivers.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.name} {d.phone ? `(${d.phone})` : ''}
-                  </SelectItem>
-                ))}
-                </SelectContent>
-              </Select>
+          <section className="space-y-3">
+            <div className="flex items-start gap-2">
+              <Layers className="mt-0.5 size-4 text-muted-foreground" />
+              <div>
+                <h3 className="text-sm font-medium">Data Operasional</h3>
+                <p className="text-xs text-muted-foreground">Jumlah manifest, jalur, dan urutan receiving.</p>
+              </div>
             </div>
-
-            <div>
-              <Label htmlFor="driver-name-snapshot">Nama Supir (Snapshot) *</Label>
-              <Input
-                id="driver-name-snapshot"
-                value={driverNameSnapshot}
-                onChange={(e) => setDriverNameSnapshot(e.target.value)}
-                placeholder="misal: Budi Santoso"
-                required
-                className="text-xs"
-              />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="manifest-count">Jumlah Manifest (Ekor) *</Label>
+                <Input
+                  id="manifest-count"
+                  type="number"
+                  min="1"
+                  value={manifestCount}
+                  onChange={(e) => setManifestCount(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="5000"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="receiving-line">Jalur Line Penerimaan</Label>
+                <Select value={lineId} onValueChange={setLineId}>
+                  <SelectTrigger id="receiving-line" className="w-full"><SelectValue placeholder="Belum ditentukan" /></SelectTrigger>
+                  <SelectContent>
+                    {lines.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>
+                        {l.lineCode} - {l.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="document-truck-sequence">Urutan Truck pada Dokumen</Label>
+                <Input
+                  id="document-truck-sequence"
+                  type="number"
+                  value={documentTruckSequence}
+                  onChange={(e) => setDocumentTruckSequence(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="Opsional"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="queue-position">Posisi Antrean</Label>
+                <Input
+                  id="queue-position"
+                  type="number"
+                  min="1"
+                  value={queuePosition}
+                  onChange={(e) => setQueuePosition(Number(e.target.value))}
+                />
+              </div>
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="supplier-master"><Building2 /> Pilih Supplier Master (Opsional)</Label>
-              <Select value={supplierId} onValueChange={handleSupplierSelect}>
-                <SelectTrigger id="supplier-master" className="w-full"><SelectValue placeholder="Pilih Supplier" /></SelectTrigger>
-                <SelectContent>
-                {suppliers.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name} ({s.code})
-                  </SelectItem>
-                ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="supplier-name-snapshot">Nama Supplier (Snapshot) *</Label>
-              <Input
-                id="supplier-name-snapshot"
-                value={supplierNameSnapshot}
-                onChange={(e) => setSupplierNameSnapshot(e.target.value)}
-                placeholder="misal: Farm Sukses Mandiri"
-                required
-                className="text-xs"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <Label htmlFor="manifest-count"><Hash /> Jumlah Manifest (Ekor) *</Label>
-              <Input
-                id="manifest-count"
-                type="number"
-                min="1"
-                value={manifestCount}
-                onChange={(e) => setManifestCount(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder="5000"
-                required
-                className="text-xs font-bold text-primary"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="receiving-line"><Layers /> Jalur Line Penerimaan</Label>
-              <Select value={lineId} onValueChange={setLineId}>
-                <SelectTrigger id="receiving-line" className="w-full"><SelectValue placeholder="Belum Ditentukan" /></SelectTrigger>
-                <SelectContent>
-                {lines.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>
-                    {l.lineCode} - {l.name}
-                  </SelectItem>
-                ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="queue-position">Posisi Antrean</Label>
-              <Input
-                id="queue-position"
-                type="number"
-                min="1"
-                value={queuePosition}
-                onChange={(e) => setQueuePosition(Number(e.target.value))}
-                className="text-xs"
-              />
-            </div>
-          </div>
+          </section>
 
           {isManifestChanged && (
-            <div>
-              <Label htmlFor="manifest-revision-reason" className="text-warning-foreground">
-                Alasan Revisi Manifest *
-              </Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="manifest-revision-reason">Alasan Revisi Manifest *</Label>
               <Textarea
                 id="manifest-revision-reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Jelaskan alasan perubahan jumlah manifest (misal: koreksi fisik dari vendor)..."
+                placeholder="Jelaskan alasan perubahan jumlah manifest, misalnya koreksi fisik dari vendor."
                 required
-                className="min-h-20 border-warning/30 bg-warning/10 text-xs"
+                className="min-h-20"
               />
             </div>
           )}
 
-          <div>
+          <Separator />
+
+          <section className="space-y-1.5">
             <Label htmlFor="receiving-notes">Catatan Tambahan</Label>
             <Textarea
               id="receiving-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Catatan opsional mengenai pengiriman..."
-              className="min-h-20 text-xs"
+              placeholder="Catatan opsional mengenai pengiriman."
+              className="min-h-20"
             />
-          </div>
+          </section>
         </div>
 
-        <DialogFooter className="border-t px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+        <DialogFooter className="flex-row justify-end border-t px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={loading}
-            className="text-xs"
           >
             Batal
           </Button>
           <Button
             type="submit"
             disabled={loading}
-            className="text-xs"
           >
             {loading ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Simpan Draft'}
           </Button>

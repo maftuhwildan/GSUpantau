@@ -77,7 +77,7 @@ interface Supplier {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <UiStatusBadge tone={status === 'ACTIVE' ? 'success' : 'neutral'} className="text-[10px]">
+    <UiStatusBadge tone={status === 'ACTIVE' ? 'success' : 'neutral'}>
       {status === 'ACTIVE' ? 'AKTIF' : 'NONAKTIF'}
     </UiStatusBadge>
   );
@@ -99,7 +99,7 @@ function SectionHeader({
       <div className="flex items-center gap-2">
         <Icon className="h-4 w-4 text-primary" />
         <div>
-          <p className="text-sm font-semibold text-foreground">{title}</p>
+          <p className="text-sm font-medium text-foreground">{title}</p>
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>
       </div>
@@ -107,7 +107,7 @@ function SectionHeader({
         id={`btn-add-${title.toLowerCase().replace(/\s/g, '-')}`}
         size="sm"
         variant="outline"
-        className="h-7 text-[11px] gap-1"
+        className="h-7 gap-1"
         onClick={onAdd}
       >
         <Plus className="h-3 w-3" /> Tambah
@@ -281,7 +281,7 @@ function TrucksSection() {
   }
 
   return (
-    <Card className="border-border">
+    <Card>
       <CardHeader className="pb-3">
         <SectionHeader
           icon={Truck}
@@ -330,7 +330,7 @@ function TrucksSection() {
             <TableBody>
               {trucks.map((truck) => (
                 <TableRow key={truck.id}>
-                  <TableCell className="text-xs font-bold text-primary ">
+                  <TableCell className="text-xs font-medium">
                     {truck.licensePlate}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
@@ -545,7 +545,7 @@ function DriversSection() {
   }
 
   return (
-    <Card className="border-border">
+    <Card>
       <CardHeader className="pb-3">
         <SectionHeader
           icon={UserCheck}
@@ -818,7 +818,7 @@ function SuppliersSection() {
   }
 
   return (
-    <Card className="border-border">
+    <Card>
       <CardHeader className="pb-3">
         <SectionHeader
           icon={Building2}
@@ -868,7 +868,7 @@ function SuppliersSection() {
             <TableBody>
               {suppliers.map((supplier) => (
                 <TableRow key={supplier.id}>
-                  <TableCell className="text-xs font-bold text-primary ">
+                  <TableCell className="text-xs font-medium">
                     {supplier.code}
                   </TableCell>
                   <TableCell className="text-xs font-medium">{supplier.name}</TableCell>

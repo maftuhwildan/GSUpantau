@@ -100,7 +100,7 @@ export default function AdminAuditTrailPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Audit Trail" description="Rekam jejak aktivitas sistem yang immutable dan tidak dapat diubah atau dihapus." actions={
-          <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading} className="text-xs gap-1">
+          <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading} className="gap-1">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
       } />
@@ -113,7 +113,7 @@ export default function AdminAuditTrailPage() {
       )}
 
       {/* Interactive Filters */}
-      <Card className="border-border p-4">
+      <Card className="p-4">
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
@@ -154,17 +154,17 @@ export default function AdminAuditTrailPage() {
           </div>
 
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" size="sm" onClick={handleResetFilters} disabled={loading} className="h-8 text-xs gap-1">
+            <Button variant="outline" size="sm" onClick={handleResetFilters} disabled={loading} className="h-8 gap-1">
               <RotateCcw className="h-3 w-3" /> Reset Filter
             </Button>
           </div>
         </div>
       </Card>
 
-      <Card className="border-border">
+      <Card>
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-base font-semibold">100 Log Terbaru</CardTitle>
+            <CardTitle>100 Log Terbaru</CardTitle>
             <CardDescription className="text-xs">
               Menampilkan catatan aktivitas user dan sistem secara berurutan.
             </CardDescription>
@@ -196,21 +196,21 @@ export default function AdminAuditTrailPage() {
                 ) : (
                   logs.map((log: any) => (
                     <TableRow key={log.id}>
-                      <TableCell className="text-xs text-muted-foreground font-mono">
+                      <TableCell className="text-xs text-muted-foreground">
                         {new Date(log.createdAt).toLocaleString('id-ID')}
                       </TableCell>
                       <TableCell>
                         <div className="font-medium text-xs text-foreground">{log.actor?.name || 'Sistem'}</div>
-                        <div className="text-[10px] text-muted-foreground">{log.actorRole || log.source}</div>
+                        <div className="text-xs text-muted-foreground">{log.actorRole || log.source}</div>
                       </TableCell>
                       <TableCell className="text-xs">
-                        <StatusBadge tone="primary" className="text-[10px] font-mono">
+                        <StatusBadge tone="primary">
                           {log.action}
                         </StatusBadge>
                       </TableCell>
                       <TableCell className="text-xs">
                         <span className="font-medium text-foreground">{log.entityType}</span> <br/>
-                        <span className="text-[10px] font-mono text-muted-foreground truncate block max-w-[120px]">{log.entityId}</span>
+                        <span className="text-xs text-muted-foreground truncate block max-w-[120px]">{log.entityId}</span>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate">
                         {log.reason || '-'}
@@ -239,7 +239,7 @@ export default function AdminAuditTrailPage() {
       <Dialog open={!!selectedLog} onOpenChange={(open) => !open && setSelectedLog(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2">
               <History className="h-4 w-4 text-primary" />
               Detail Audit Log: {selectedLog?.action}
             </DialogTitle>
@@ -252,15 +252,15 @@ export default function AdminAuditTrailPage() {
           <div className="space-y-4 my-2 text-xs">
             <div className="grid grid-cols-2 gap-2 p-3 bg-muted  rounded-lg border text-xs">
               <div>
-                <span className="text-muted-foreground font-semibold">Aktor:</span>{' '}
+                <span className="text-muted-foreground font-medium">Aktor:</span>{' '}
                 <span className="font-medium text-foreground">{selectedLog?.actor?.name || 'Sistem'}</span>
               </div>
               <div>
-                <span className="text-muted-foreground font-semibold">Role / Sumber:</span>{' '}
+                <span className="text-muted-foreground font-medium">Role / Sumber:</span>{' '}
                 <span className="font-medium text-foreground">{selectedLog?.actorRole || selectedLog?.source}</span>
               </div>
               <div className="col-span-2">
-                <span className="text-muted-foreground font-semibold">Alasan Perubahan:</span>{' '}
+                <span className="text-muted-foreground font-medium">Alasan Perubahan:</span>{' '}
                 <span className="font-medium text-foreground">{selectedLog?.reason || 'Tidak ada alasan khusus'}</span>
               </div>
             </div>
@@ -268,10 +268,10 @@ export default function AdminAuditTrailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Before Data */}
               <div className="space-y-1.5">
-                <p className="font-semibold text-muted-foreground">
+                <p className="font-medium text-muted-foreground">
                   Data Sebelum (Before)
                 </p>
-                <div className="p-3 bg-foreground text-muted-foreground rounded-lg text-[11px] font-mono overflow-x-auto max-h-60 border">
+                <div className="p-3 bg-foreground text-muted-foreground rounded-lg text-xs font-mono overflow-x-auto max-h-60 border">
                   {selectedLog?.beforeData ? (
                     <pre>{JSON.stringify(selectedLog.beforeData, null, 2)}</pre>
                   ) : (
@@ -282,10 +282,10 @@ export default function AdminAuditTrailPage() {
 
               {/* After Data */}
               <div className="space-y-1.5">
-                <p className="font-semibold text-muted-foreground">
+                <p className="font-medium text-muted-foreground">
                   Data Sesudah (After)
                 </p>
-                <div className="p-3 bg-foreground text-muted-foreground rounded-lg text-[11px] font-mono overflow-x-auto max-h-60 border">
+                <div className="p-3 bg-foreground text-muted-foreground rounded-lg text-xs font-mono overflow-x-auto max-h-60 border">
                   {selectedLog?.afterData ? (
                     <pre>{JSON.stringify(selectedLog.afterData, null, 2)}</pre>
                   ) : (

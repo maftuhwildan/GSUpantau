@@ -17,7 +17,7 @@ export default function Home() {
       <main className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-4 py-12 sm:px-6 sm:py-20">
         <div className="mx-auto max-w-3xl space-y-6 text-center">
           <StatusBadge tone="primary" className="mx-auto"><Activity className="animate-pulse" /> Sistem Penghitungan Otomatis RPA</StatusBadge>
-          <h2 className="font-heading text-3xl font-bold tracking-tight sm:text-5xl">Rekonsiliasi manifest dan hasil sensor yang akurat, realtime, dan transparan.</h2>
+          <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-5xl">Rekonsiliasi manifest dan hasil sensor yang akurat, realtime, dan transparan.</h2>
           <p className="mx-auto max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">Bandingkan jumlah ayam dari Surat Jalan dengan hitungan sensor ESP32 sebelum proses pemotongan, dalam satu alur operasional yang dapat diaudit.</p>
         </div>
 

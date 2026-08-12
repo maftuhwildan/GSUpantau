@@ -76,15 +76,15 @@ export default function OperatorReceivingQueuePage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Antrean Surat Jalan" description="Pilih truck berstatus WAITING yang telah diterbitkan Admin untuk mulai proses penghitungan." actions={<>
-          <Button variant="outline" size="sm" onClick={fetchQueue} className="text-xs gap-1">
+          <Button variant="outline" size="sm" onClick={fetchQueue} className="gap-1">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
           <StatusBadge tone="success">Jalur Operasional Aktif</StatusBadge>
         </>} />
 
       {/* Operator Restrictions Banner */}
-      <Alert variant="warning">
-        <ShieldAlert className="h-5 w-5 text-warning-foreground shrink-0 mt-0.5" />
+      <Alert>
+        <ShieldAlert className="h-5 w-5 shrink-0 text-muted-foreground" />
         <AlertTitle>Batas Wewenang Operator</AlertTitle>
         <AlertDescription>Operator dapat memulai (<em>Start Counting</em>) truck berstatus WAITING. Pembuatan, penerbitan, atau revisi data Surat Jalan hanya dapat dilakukan oleh Admin.</AlertDescription>
       </Alert>
@@ -97,9 +97,9 @@ export default function OperatorReceivingQueuePage() {
       )}
 
       {/* Queue Table */}
-      <Card className="border-border">
+      <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold flex items-center justify-between">
+          <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
               <Layers className="h-4 w-4 text-primary" />
               Daftar Antrean Truck Berjalan

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import type { LucideIcon } from "lucide-react"
 import { AlertCircle, Inbox, RefreshCw } from "lucide-react"
 
@@ -6,8 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
-function EmptyState({ title, description, icon: Icon = Inbox }: { title: string; description?: string; icon?: LucideIcon }) {
-  return <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20 p-6 text-center"><Icon className="mb-3 size-8 text-muted-foreground" /><p className="font-medium">{title}</p>{description ? <p className="mt-1 max-w-md text-sm text-muted-foreground">{description}</p> : null}</div>
+function EmptyState({ title, description, icon: Icon = Inbox, action }: { title: string; description?: string; icon?: LucideIcon; action?: ReactNode }) {
+  return <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20 p-6 text-center"><Icon className="mb-3 size-8 text-muted-foreground" /><p className="font-medium">{title}</p>{description ? <p className="mt-1 max-w-md text-sm text-muted-foreground">{description}</p> : null}{action ? <div className="mt-4">{action}</div> : null}</div>
 }
 
 function ErrorState({ title = "Data tidak dapat dimuat", description, onRetry }: { title?: string; description?: string; onRetry?: () => void }) {

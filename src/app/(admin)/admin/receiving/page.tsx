@@ -117,17 +117,17 @@ export default function AdminReceivingPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Kelola Surat Jalan" description="Input data manifest pengiriman truck, terbitkan antrean, atau revisi manifest dengan alasan audit." actions={<>
-          <Button variant="outline" size="sm" onClick={fetchReceivings} className="text-xs gap-1">
+          <Button variant="outline" size="sm" onClick={fetchReceivings} className="gap-1">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
-          <Button onClick={handleCreateNew} className="text-xs gap-1.5">
+          <Button onClick={handleCreateNew} className="gap-1.5">
             <Plus className="h-4 w-4" />
             <span>Input Surat Jalan Baru (Draft)</span>
           </Button>
         </>} />
 
       {/* Filter & Search Bar */}
-      <Card className="border-border p-4">
+      <Card className="p-4">
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
           <div className="flex items-center gap-2 w-full sm:w-80">
             <Input
@@ -167,9 +167,9 @@ export default function AdminReceivingPage() {
       )}
 
       {/* Receivings Table */}
-      <Card className="border-border">
+      <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Daftar Surat Jalan Penerimaan</CardTitle>
+          <CardTitle>Daftar Surat Jalan Penerimaan</CardTitle>
           <CardDescription className="text-xs">
             Actual count dihitung otomatis secara derivatif dari log sensor dan tidak dapat diedit manual.
           </CardDescription>
