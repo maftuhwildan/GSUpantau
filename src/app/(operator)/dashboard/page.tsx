@@ -374,15 +374,22 @@ export default function OperatorDashboardPage() {
         {/* Today's Detections Summary */}
         <Card>
           <CardHeader className="pb-3 border-b">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Bird className="size-4 text-primary" />
-              <span>Ringkasan Deteksi Hari Ini</span>
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Total event deteksi sensor produksi pada jalur ini ({data.line?.name || 'Jalur terhubung'}).
-            </CardDescription>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Bird className="size-4 text-primary" />
+                  <span>Ringkasan Deteksi Hari Ini</span>
+                </CardTitle>
+                <CardDescription className="text-xs mt-0.5">
+                  Total event deteksi sensor produksi pada jalur ini ({data.line?.name || 'Jalur terhubung'}).
+                </CardDescription>
+              </div>
+              <Badge variant="outline" className="text-xs font-semibold tabular-nums px-2.5 py-1">
+                Total: {totalDetectionsToday.toLocaleString('id-ID')} ekor
+              </Badge>
+            </div>
           </CardHeader>
-          <CardContent className="p-6 space-y-4">
+          <CardContent className="p-6 space-y-5">
             {totalDetectionsToday === 0 ? (
               <EmptyState
                 icon={Bird}
@@ -390,24 +397,62 @@ export default function OperatorDashboardPage() {
                 description="Statistik deteksi terhubung sesi dan tanpa sesi akan diperbarui otomatis begitu sensor mendeteksi ayam."
               />
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex items-center gap-3 rounded-xl border bg-card p-4">
-                  <StatusBadge tone="success">Terhubung sesi</StatusBadge>
-                  <div>
-                    <p className="font-heading text-2xl font-semibold tabular-nums">
-                      {data.assignedDetections.toLocaleString('id-ID')}
-                    </p>
-                    <p className="text-xs font-medium text-muted-foreground">Terhubung Sesi</p>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Assigned Box */}
+                  <div className="rounded-xl border bg-card p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <StatusBadge tone="success">Terhubung Sesi</StatusBadge>
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {totalDetectionsToday > 0 ? Math.round((data.assignedDetections / totalDetectionsToday) * 100) : 0}%
+                      </span>
+                    </div>
+                    <div>
+                      <div className="font-heading text-3xl font-semibold tabular-nums text-foreground">
+                        {data.assignedDetections.toLocaleString('id-ID')}{' '}
+                        <span className="text-xs font-normal text-muted-foreground">ekor</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Deteksi saat ada sesi counting aktif</p>
+                    </div>
+                  </div>
+
+                  {/* Unassigned Box */}
+                  <div className="rounded-xl border bg-card p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <StatusBadge tone={data.unassignedDetections > 0 ? 'warning' : 'neutral'}>Tanpa Sesi</StatusBadge>
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {totalDetectionsToday > 0 ? Math.round((data.unassignedDetections / totalDetectionsToday) * 100) : 0}%
+                      </span>
+                    </div>
+                    <div>
+                      <div className="font-heading text-3xl font-semibold tabular-nums text-foreground">
+                        {data.unassignedDetections.toLocaleString('id-ID')}{' '}
+                        <span className="text-xs font-normal text-muted-foreground">ekor</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Deteksi di luar sesi counting aktif</p>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 rounded-xl border bg-card p-4">
-                  <StatusBadge tone={data.unassignedDetections > 0 ? 'warning' : 'neutral'}>Tanpa sesi</StatusBadge>
-                  <div>
-                    <p className="font-heading text-2xl font-semibold tabular-nums">
-                      {data.unassignedDetections.toLocaleString('id-ID')}
-                    </p>
-                    <p className="text-xs font-medium text-muted-foreground">Tanpa Sesi</p>
+                {/* Distribution Ratio Bar */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex h-2 w-full overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className="bg-success transition-all duration-300"
+                      style={{
+                        width: `${totalDetectionsToday > 0 ? Math.round((data.assignedDetections / totalDetectionsToday) * 100) : 0}%`,
+                      }}
+                    />
+                    <div
+                      className="bg-warning transition-all duration-300"
+                      style={{
+                        width: `${totalDetectionsToday > 0 ? Math.round((data.unassignedDetections / totalDetectionsToday) * 100) : 0}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{totalDetectionsToday > 0 ? Math.round((data.assignedDetections / totalDetectionsToday) * 100) : 0}% Terhubung Sesi</span>
+                    <span>{totalDetectionsToday > 0 ? Math.round((data.unassignedDetections / totalDetectionsToday) * 100) : 0}% Tanpa Sesi</span>
                   </div>
                 </div>
               </div>
