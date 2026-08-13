@@ -72,28 +72,36 @@ export async function GET(req: NextRequest) {
     }
 
     // Scope waiting queue to the selected line (assigned to line or unassigned to any line)
-    const waitingQueue = await db
-      .select({
-        id: receivings.id,
-        receivingNumber: receivings.receivingNumber,
-        deliveryNoteNumber: receivings.deliveryNoteNumber,
-        receivingDate: receivings.receivingDate,
-        queuePosition: receivings.queuePosition,
-        manifestCount: receivings.manifestCount,
-        status: receivings.status,
-        licensePlateSnapshot: receivings.licensePlateSnapshot,
-        supplierNameSnapshot: receivings.supplierNameSnapshot,
-        createdAt: receivings.createdAt,
-      })
-      .from(receivings)
-      .where(
-        and(
-          eq(receivings.status, 'WAITING'),
-          or(eq(receivings.lineId, lineId), isNull(receivings.lineId))
-        )
-      )
-      .orderBy(asc(receivings.queuePosition), desc(receivings.createdAt))
-      .limit(5);
+    const waitingQueueCondition = and(
+      eq(receivings.status, 'WAITING'),
+      or(eq(receivings.lineId, lineId), isNull(receivings.lineId))
+    );
+
+    const [waitingQueue, waitingQueueCountResult] = await Promise.all([
+      db
+        .select({
+          id: receivings.id,
+          receivingNumber: receivings.receivingNumber,
+          deliveryNoteNumber: receivings.deliveryNoteNumber,
+          receivingDate: receivings.receivingDate,
+          queuePosition: receivings.queuePosition,
+          manifestCount: receivings.manifestCount,
+          status: receivings.status,
+          licensePlateSnapshot: receivings.licensePlateSnapshot,
+          supplierNameSnapshot: receivings.supplierNameSnapshot,
+          createdAt: receivings.createdAt,
+        })
+        .from(receivings)
+        .where(waitingQueueCondition)
+        .orderBy(asc(receivings.queuePosition), desc(receivings.createdAt))
+        .limit(5),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(receivings)
+        .where(waitingQueueCondition),
+    ]);
+
+    const waitingQueueCount = waitingQueueCountResult[0]?.count || 0;
 
     const startOfToday = getStartOfTodayInSiteTimezone();
     const startOfTomorrow = getStartOfTomorrowInSiteTimezone();
@@ -128,6 +136,7 @@ export async function GET(req: NextRequest) {
       device,
       activeSession: activeSession ? { ...activeSession, actualCount, lastDetection } : null,
       waitingQueue,
+      waitingQueueCount,
       assignedDetections,
       unassignedDetections,
     });
