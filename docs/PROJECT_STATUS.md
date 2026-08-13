@@ -1,6 +1,6 @@
 # Status Proyek dan Handoff Agent
 
-Terakhir diperbarui: 13 Agustus 2026.
+Terakhir diperbarui: 14 Agustus 2026.
 
 ## Milestone Saat Ini
 
@@ -114,6 +114,27 @@ Seluruh halaman Operator (`/dashboard`, `/receiving-queue`, `/active-session`, `
 API extension (`waitingQueueCount`, enum validation `400`), tipe TypeScript, dan test otomatis
 telah lulus 100%.
 
+UI/UX operational hardening telah diimplementasikan dari baseline commit `b5da8eb` pada
+commit `5e0e624`, kemudian menerima stabilisasi filter dan refinement Dashboard Operator
+hingga baseline aktif `f8f796e`. Spesifikasi decision-complete tersedia di
+[`UI_UX_OPERATIONAL_HARDENING.md`](./UI_UX_OPERATIONAL_HARDENING.md), dan prompt siap-pakai
+untuk conversation agent terpisah tersedia di
+[`UI_UX_OPERATIONAL_HARDENING_PROMPT.md`](./UI_UX_OPERATIONAL_HARDENING_PROMPT.md). Scope
+mencakup kejelasan status realtime, hierarchy Operator, progress overcount, standardisasi
+copy/encoding, sensor mobile, feedback mutasi, accessibility, dan filter URL. Review visual
+dan screenshot dilakukan manual oleh pengguna; agent hanya menjalankan validasi otomatis.
+
+Audit refinement UI/UX Admin telah didokumentasikan dari baseline commit `f8f796e`.
+Spesifikasi decision-complete tersedia di
+[`ADMIN_UI_UX_REFINEMENT.md`](./ADMIN_UI_UX_REFINEMENT.md), dan prompt siap-pakai untuk
+conversation agent terpisah tersedia di
+[`ADMIN_UI_UX_REFINEMENT_PROMPT.md`](./ADMIN_UI_UX_REFINEMENT_PROMPT.md). Scope mencakup
+hierarchy Dashboard Admin, mobile cards, pencarian Surat Jalan, Audit Detail, Master Data
+Tabs, pemisahan Reset Kata Sandi, dirty-state Pengaturan, copy, dan accessibility tanpa
+mengubah backend atau design system dasar. Implementasi telah selesai pada branch
+`codex/admin-ui-ux-refinement` (commit `92c8e94`). Review visual dan screenshot dilakukan
+manual oleh pengguna.
+
 Guardrail untuk agent berikutnya:
 
 - tetap gunakan Tailwind CSS 4, semantic token, dan primitive/composition shadcn yang sudah
@@ -122,8 +143,8 @@ Guardrail untuk agent berikutnya:
   mobile, sticky Finish, dialog konfirmasi, dan target sentuh minimal 44 px;
 - pertahankan controlled form, validasi Zod, kontrak date-only `YYYY-MM-DD`, serta batas
   chart Reports maksimal 12 item tanpa membatasi tabel dan CSV;
-- lakukan perubahan visual per halaman atau per pola agar diff mudah ditinjau; ambil
-  screenshot sebelum/sesudah pada breakpoint yang relevan;
+- lakukan perubahan visual per halaman atau per pola agar diff mudah ditinjau; serahkan
+  review visual dan screenshot pada breakpoint yang relevan kepada pengguna;
 - dark mode masih di luar cakupan. QA visual halaman terautentikasi secara end-to-end tetap
   perlu dilakukan saat database development dan akun uji aktif.
 
