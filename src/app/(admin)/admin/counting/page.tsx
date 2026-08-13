@@ -161,8 +161,8 @@ function AdminCountingContent() {
                     <p className="truncate text-xs text-muted-foreground">{line.lineCode}</p>
                   </div>
                   <StatusBadge tone={session ? 'warning' : 'neutral'}>
-                    <Radio className={session ? 'animate-pulse' : ''} />
-                    {lineLoading ? 'MEMUAT' : session ? 'COUNTING' : 'IDLE'}
+                    <Radio className={session ? 'motion-safe:animate-pulse' : ''} />
+                    {lineLoading ? 'Memuat' : session ? 'Sedang Dihitung' : 'Siap'}
                   </StatusBadge>
                 </div>
 
@@ -181,10 +181,10 @@ function AdminCountingContent() {
                 ) : (
                   <EmptyState
                     icon={Radio}
-                    title={`${line.name} sedang tidak memiliki sesi aktif`}
-                    description="Tidak ada proses penghitungan truck yang sedang berjalan di line ini."
+                    title={`${line.name} sedang siap (tidak ada sesi aktif)`}
+                    description="Tidak ada proses penghitungan truk yang sedang berjalan di jalur ini."
                     action={
-                      <Button asChild>
+                      <Button asChild className="min-h-[44px] sm:min-h-0">
                         <Link href="/admin/receiving">
                           <PlayCircle className="size-4" />
                           <span>Buka manajemen Surat Jalan</span>

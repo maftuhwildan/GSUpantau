@@ -58,11 +58,11 @@ export function QueueTable({
   }
 
   const renderStatus = (receiving: ReceivingData) => {
-    if (receiving.status === 'DRAFT') return <StatusBadge tone="neutral">DRAFT</StatusBadge>;
-    if (receiving.status === 'WAITING') return <StatusBadge tone="info">WAITING</StatusBadge>;
-    if (receiving.status === 'COUNTING') return <StatusBadge tone="warning" className="animate-pulse">COUNTING</StatusBadge>;
-    if (receiving.status === 'COMPLETED') return <StatusBadge tone="success">COMPLETED</StatusBadge>;
-    if (receiving.status === 'CANCELLED') return <StatusBadge tone="danger">CANCELLED</StatusBadge>;
+    if (receiving.status === 'DRAFT') return <StatusBadge tone="neutral">Draf</StatusBadge>;
+    if (receiving.status === 'WAITING') return <StatusBadge tone="info">Menunggu</StatusBadge>;
+    if (receiving.status === 'COUNTING') return <StatusBadge tone="warning" className="motion-safe:animate-pulse">Sedang dihitung</StatusBadge>;
+    if (receiving.status === 'COMPLETED') return <StatusBadge tone="success">Selesai</StatusBadge>;
+    if (receiving.status === 'CANCELLED') return <StatusBadge tone="danger">Dibatalkan</StatusBadge>;
     return <Badge variant="outline">{receiving.status}</Badge>;
   };
 
@@ -70,7 +70,7 @@ export function QueueTable({
     <div className={mobile ? 'grid grid-cols-2 gap-2' : 'flex items-center justify-end gap-1.5'}>
       {isAdmin && receiving.status === 'DRAFT' && onPublish && (
         <Button size="sm" onClick={() => onPublish(receiving)} className={mobile ? 'h-11' : 'h-8'}>
-          Publish
+          Terbitkan
         </Button>
       )}
       {isAdmin && (receiving.status === 'DRAFT' || receiving.status === 'WAITING') && onEdit && (
@@ -85,7 +85,7 @@ export function QueueTable({
       )}
       {receiving.status === 'WAITING' && (
         <Button size="sm" onClick={() => onStart ? onStart(receiving) : null} asChild={!onStart} className={mobile ? 'h-11' : 'h-8'}>
-          {onStart ? <><Play /> Mulai Hitung</> : <Link href={isAdmin ? '/admin/counting' : '/active-session'}><Play /> Mulai Hitung</Link>}
+          {onStart ? <><Play /> Mulai Penghitungan</> : <Link href={isAdmin ? '/admin/counting' : '/active-session'}><Play /> Mulai Penghitungan</Link>}
         </Button>
       )}
       {receiving.status === 'COUNTING' && (
@@ -118,7 +118,7 @@ export function QueueTable({
                 <div><dt className="text-muted-foreground">Supplier</dt><dd className="mt-0.5 truncate font-normal">{receiving.supplierNameSnapshot}</dd></div>
                 <div><dt className="text-muted-foreground">Jalur</dt><dd className="mt-0.5 font-normal">{receiving.lineName || '-'}</dd></div>
                 <div><dt className="text-muted-foreground">Manifest</dt><dd className="mt-0.5 font-normal tabular-nums">{receiving.manifestCount.toLocaleString('id-ID')} ekor</dd></div>
-                <div><dt className="text-muted-foreground">Actual Sensor</dt><dd className="mt-0.5 font-normal tabular-nums">{receiving.actualCount == null ? 'Belum dihitung' : `${receiving.actualCount.toLocaleString('id-ID')} ekor`}</dd></div>
+                <div><dt className="text-muted-foreground">Hasil sensor</dt><dd className="mt-0.5 font-normal tabular-nums">{receiving.actualCount == null ? 'Belum dihitung' : `${receiving.actualCount.toLocaleString('id-ID')} ekor`}</dd></div>
               </dl>
               {renderActions(receiving, true)}
             </CardContent>
@@ -134,9 +134,9 @@ export function QueueTable({
             <TableHead>No. Surat Jalan</TableHead>
             <TableHead>Plat & Supir</TableHead>
             <TableHead>Supplier</TableHead>
-            <TableHead>Jalur (Line)</TableHead>
+            <TableHead>Jalur</TableHead>
             <TableHead className="text-right">Manifest</TableHead>
-            <TableHead className="text-right">Actual Sensor</TableHead>
+            <TableHead className="text-right">Hasil sensor</TableHead>
             <TableHead className="text-right">Selisih</TableHead>
             <TableHead className="text-center">Status</TableHead>
             <TableHead className="text-right">Aksi</TableHead>

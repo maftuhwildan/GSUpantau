@@ -21,7 +21,7 @@ import { useUrlFilters } from '@/lib/use-url-filters';
 
 const receivingChartConfig = {
   manifest: { label: 'Manifest', color: 'var(--chart-1)' },
-  actual: { label: 'Actual', color: 'var(--chart-2)' },
+  actual: { label: 'Hasil Sensor', color: 'var(--chart-2)' },
 } satisfies ChartConfig;
 
 export default function AdminReportsPage() {
@@ -115,7 +115,7 @@ export default function AdminReportsPage() {
         actions={
           <>
             <Button variant="outline" size="sm" onClick={fetchReports} disabled={loading} className="gap-1 min-h-[44px] sm:min-h-0">
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'motion-safe:animate-spin' : ''}`} /> Muat ulang
             </Button>
             <Button size="sm" onClick={handleExportCSV} disabled={loading || !data} className="gap-1 min-h-[44px] sm:min-h-0">
               <Download className="h-3.5 w-3.5" /> Export CSV
@@ -224,66 +224,112 @@ export default function AdminReportsPage() {
             </Card>
           )}
 
-          <Card>
-            <CardHeader className="pb-3 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Riwayat Penerimaan Selesai</CardTitle>
-                <CardDescription className="text-xs">
-                  Daftar semua truk yang telah selesai dihitung sesuai filter.
-                </CardDescription>
-              </div>
-              <Badge variant="outline" className="text-xs font-normal">
-                Total {data.list?.length || 0} Data
-              </Badge>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md border border-border overflow-hidden">
-                <Table>
-                  <TableHeader className="bg-muted ">
-                    <TableRow>
-                      <TableHead className="text-xs w-[120px]">Tanggal</TableHead>
-                      <TableHead className="text-xs">No. SJ / Truk</TableHead>
-                      <TableHead className="text-xs">Jalur</TableHead>
-                      <TableHead className="text-xs text-right">Manifest</TableHead>
-                      <TableHead className="text-xs text-right">Hasil Sensor</TableHead>
-                      <TableHead className="text-xs text-right">Selisih</TableHead>
-                      <TableHead className="text-xs text-right">%</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.list?.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-xs">
-                          Belum ada data penerimaan selesai yang cocok dengan filter.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      data.list?.map((item: any) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="text-xs">{item.receivingDate}</TableCell>
-                          <TableCell>
-                            <div className="font-medium text-foreground">{item.deliveryNoteNumber}</div>
-                            <div className="text-xs text-muted-foreground">{item.licensePlateSnapshot}</div>
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            <Badge variant="secondary">
-                              {item.line?.lineCode || item.line?.name || '-'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-xs text-right font-normal tabular-nums">{item.manifestCount.toLocaleString('id-ID')}</TableCell>
-                          <TableCell className="text-xs text-right font-normal tabular-nums text-success">{item.actualCount.toLocaleString('id-ID')}</TableCell>
-                          <TableCell className={`text-xs text-right font-normal tabular-nums ${item.differenceCount < 0 ? 'text-warning-foreground' : 'text-success'}`}>
-                            {item.differenceCount > 0 ? '+' : ''}{item.differenceCount.toLocaleString('id-ID')}
-                          </TableCell>
-                          <TableCell className="text-xs text-right font-normal tabular-nums">{item.differencePercent}%</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Riwayat Penerimaan Selesai</CardTitle>
+                  <CardDescription className="text-xs">
+                    Daftar semua truk yang telah selesai dihitung sesuai filter.
+                  </CardDescription>
+                </div>
+                <Badge variant="outline" className="text-xs font-normal">
+                  Total {data.list?.length || 0} Data
+                </Badge>
+              </CardHeader>
+              <CardContent className="p-0 sm:p-6">
+                {data.list?.length === 0 ? (
+                  <p className="text-center py-8 text-muted-foreground text-xs italic">
+                    Belum ada data penerimaan selesai yang cocok dengan filter.
+                  </p>
+                ) : (
+                  <>
+                    {/* Mobile Cards View (< md) */}
+                    <div className="divide-y divide-border md:hidden">
+                      {data.list?.map((item: any) => {
+                        const diff = item.differenceCount || 0;
+                        const diffLabel = diff < 0 ? `Kurang (${diff.toLocaleString('id-ID')})` : diff > 0 ? `Lebih (+${diff.toLocaleString('id-ID')})` : 'Sesuai (0)';
+                        return (
+                          <div key={item.id} className="p-4 space-y-2 text-xs">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold text-sm text-foreground">
+                                {item.deliveryNoteNumber}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                {item.receivingDate}
+                              </Badge>
+                            </div>
+
+                            <div className="text-muted-foreground space-y-0.5">
+                              <p><span className="font-medium text-foreground">{item.licensePlateSnapshot}</span> • Jalur: {item.line?.lineCode || item.line?.name || '—'}</p>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/50 text-center font-mono tabular-nums">
+                              <div>
+                                <span className="text-muted-foreground text-xs block font-sans">Manifest</span>
+                                <span className="font-medium">{item.manifestCount.toLocaleString('id-ID')}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground text-xs block font-sans">Hasil Sensor</span>
+                                <span className="font-medium text-primary">{item.actualCount.toLocaleString('id-ID')}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground text-xs block font-sans">Selisih ({item.differencePercent}%)</span>
+                                <span className={`font-medium ${diff < 0 ? 'text-destructive' : diff > 0 ? 'text-primary' : 'text-foreground'}`}>
+                                  {diffLabel}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Desktop Table View (>= md) */}
+                    <div className="hidden md:block rounded-md border border-border overflow-hidden">
+                      <Table>
+                        <TableHeader className="bg-muted">
+                          <TableRow>
+                            <TableHead className="text-xs w-[120px]">Tanggal</TableHead>
+                            <TableHead className="text-xs">No. SJ / Truk</TableHead>
+                            <TableHead className="text-xs">Jalur</TableHead>
+                            <TableHead className="text-xs text-right">Manifest</TableHead>
+                            <TableHead className="text-xs text-right">Hasil Sensor</TableHead>
+                            <TableHead className="text-xs text-right">Selisih</TableHead>
+                            <TableHead className="text-xs text-right">%</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {data.list?.map((item: any) => {
+                            const diff = item.differenceCount || 0;
+                            const diffText = diff < 0 ? `Kurang (${diff.toLocaleString('id-ID')})` : diff > 0 ? `Lebih (+${diff.toLocaleString('id-ID')})` : 'Sesuai (0)';
+                            return (
+                              <TableRow key={item.id}>
+                                <TableCell className="text-xs">{item.receivingDate}</TableCell>
+                                <TableCell>
+                                  <div className="font-medium text-foreground">{item.deliveryNoteNumber}</div>
+                                  <div className="text-xs text-muted-foreground">{item.licensePlateSnapshot}</div>
+                                </TableCell>
+                                <TableCell className="text-xs">
+                                  <Badge variant="secondary">
+                                    {item.line?.lineCode || item.line?.name || '-'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-xs text-right font-mono tabular-nums">{item.manifestCount.toLocaleString('id-ID')}</TableCell>
+                                <TableCell className="text-xs text-right font-mono tabular-nums text-primary">{item.actualCount.toLocaleString('id-ID')}</TableCell>
+                                <TableCell className={`text-xs text-right font-mono tabular-nums font-medium ${diff < 0 ? 'text-destructive' : diff > 0 ? 'text-primary' : 'text-foreground'}`}>
+                                  {diffText}
+                                </TableCell>
+                                <TableCell className="text-xs text-right font-mono tabular-nums">{item.differencePercent}%</TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
         </>
       )}
     </div>
