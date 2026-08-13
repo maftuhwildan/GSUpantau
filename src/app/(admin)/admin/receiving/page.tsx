@@ -14,12 +14,23 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
+const receivingStatusFilters = [
+  { value: 'ALL', label: 'Semua' },
+  { value: 'DRAFT', label: 'Draft' },
+  { value: 'WAITING', label: 'Menunggu' },
+  { value: 'COUNTING', label: 'Penghitungan' },
+  { value: 'COMPLETED', label: 'Selesai' },
+  { value: 'CANCELLED', label: 'Dibatalkan' },
+] as const;
+
+type ReceivingStatusFilter = (typeof receivingStatusFilters)[number]['value'];
+
 export default function AdminReceivingPage() {
   const [receivings, setReceivings] = useState<ReceivingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const [activeTab, setActiveTab] = useState<string>('ALL');
+  const [activeTab, setActiveTab] = useState<ReceivingStatusFilter>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const [formDialogOpen, setFormDialogOpen] = useState(false);
@@ -105,15 +116,6 @@ export default function AdminReceivingPage() {
     setStartDialogOpen(true);
   };
 
-  const countsByStatus = {
-    ALL: receivings.length,
-    DRAFT: receivings.filter((r) => r.status === 'DRAFT').length,
-    WAITING: receivings.filter((r) => r.status === 'WAITING').length,
-    COUNTING: receivings.filter((r) => r.status === 'COUNTING').length,
-    COMPLETED: receivings.filter((r) => r.status === 'COMPLETED').length,
-    CANCELLED: receivings.filter((r) => r.status === 'CANCELLED').length,
-  };
-
   return (
     <div className="space-y-6">
       <PageHeader title="Kelola Surat Jalan" description="Input data manifest pengiriman truck, terbitkan antrean, atau revisi manifest dengan alasan audit." actions={<>
@@ -128,8 +130,8 @@ export default function AdminReceivingPage() {
 
       {/* Filter & Search Bar */}
       <Card className="p-4">
-        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-          <div className="flex items-center gap-2 w-full sm:w-80">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex w-full items-center gap-2 lg:w-80">
             <Input
               placeholder="Cari No. SJ / Plat / Supir / Supplier..."
               value={searchQuery}
@@ -137,25 +139,28 @@ export default function AdminReceivingPage() {
               className="w-full text-xs"
             />
           </div>
-          <ToggleGroup
-            type="single"
-            value={activeTab}
-            onValueChange={(value) => value && setActiveTab(value as typeof activeTab)}
-            variant="outline"
-            spacing={0}
-            className="flex-wrap"
-            aria-label="Filter status Surat Jalan"
-          >
-            {(['ALL', 'DRAFT', 'WAITING', 'COUNTING', 'COMPLETED', 'CANCELLED'] as const).map((tab) => (
-              <ToggleGroupItem
-                key={tab}
-                value={tab}
-                className="h-11 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground sm:h-8"
-              >
-                {tab === 'ALL' ? 'Semua' : tab}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+          <div className="no-scrollbar w-full overflow-x-auto lg:w-auto">
+            <ToggleGroup
+              type="single"
+              value={activeTab}
+              onValueChange={(value) => value && setActiveTab(value as ReceivingStatusFilter)}
+              variant="default"
+              spacing={1}
+              className="min-w-max rounded-2xl bg-muted/60 p-1 ring-1 ring-border/60"
+              aria-label="Filter status Surat Jalan"
+            >
+              {receivingStatusFilters.map((filter) => (
+                <ToggleGroupItem
+                  key={filter.value}
+                  value={filter.value}
+                  aria-label={`Tampilkan status ${filter.label}`}
+                  className="h-11 rounded-xl px-4 text-xs font-normal text-muted-foreground hover:bg-background/70 hover:text-foreground data-[state=on]:bg-primary data-[state=on]:font-medium data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm data-[state=on]:hover:bg-primary/90"
+                >
+                  {filter.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
         </div>
       </Card>
 

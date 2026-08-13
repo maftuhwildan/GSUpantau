@@ -4,7 +4,9 @@ import { auditLogs, users } from '@/db/schema';
 import { requirePermission } from '@/lib/auth';
 import { internalError, validationError } from '@/lib/errors';
 import { getDateRangeFromStrings } from '@/lib/time';
-import { eq, and, desc, asc, gte, lt } from 'drizzle-orm';
+import { canonicalizeAuditEntityType, getAuditEntityAliases } from '@/lib/audit-filter';
+import { eq, and, desc, asc, gte, lt, inArray, isNull } from 'drizzle-orm';
+import { z } from 'zod';
 
 function sanitizeAuditData(data: any): any {
   if (data === null || data === undefined) return data;
@@ -47,6 +49,10 @@ export async function GET(req: NextRequest) {
     const limitParam = parseInt(searchParams.get('limit') || '50', 10);
     const limit = isNaN(limitParam) ? 50 : Math.min(limitParam, 100);
 
+    if (actorId && actorId !== 'SYSTEM' && !z.string().uuid().safeParse(actorId).success) {
+      return validationError('actor_id tidak valid.');
+    }
+
     if (dateFrom && dateTo && dateFrom > dateTo) {
       return validationError('date_from tidak boleh lebih besar dari date_to.');
     }
@@ -63,16 +69,17 @@ export async function GET(req: NextRequest) {
 
     const conditions = [];
     if (action) conditions.push(eq(auditLogs.action, action));
-    if (entityType) conditions.push(eq(auditLogs.entityType, entityType));
-    if (actorId) conditions.push(eq(auditLogs.actorId, actorId));
+    if (entityType) conditions.push(inArray(auditLogs.entityType, getAuditEntityAliases(entityType)));
+    if (actorId === 'SYSTEM') conditions.push(isNull(auditLogs.actorId));
+    else if (actorId) conditions.push(eq(auditLogs.actorId, actorId));
     
     if (start) conditions.push(gte(auditLogs.createdAt, start));
     if (endExclusive) conditions.push(lt(auditLogs.createdAt, endExclusive));
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const logs = await db
-      .select({
+    const [logs, actionOptions, entityOptions] = await Promise.all([
+      db.select({
         id: auditLogs.id,
         action: auditLogs.action,
         entityType: auditLogs.entityType,
@@ -93,7 +100,14 @@ export async function GET(req: NextRequest) {
       .leftJoin(users, eq(auditLogs.actorId, users.id))
       .where(whereClause)
       .orderBy(desc(auditLogs.createdAt))
-      .limit(limit);
+      .limit(limit),
+      db.selectDistinct({ value: auditLogs.action })
+        .from(auditLogs)
+        .orderBy(asc(auditLogs.action)),
+      db.selectDistinct({ value: auditLogs.entityType })
+        .from(auditLogs)
+        .orderBy(asc(auditLogs.entityType)),
+    ]);
 
     const sanitizedLogs = logs.map((log) => ({
       ...log,
@@ -101,7 +115,15 @@ export async function GET(req: NextRequest) {
       afterData: sanitizeAuditData(log.afterData),
     }));
 
-    return NextResponse.json({ logs: sanitizedLogs });
+    return NextResponse.json({
+      logs: sanitizedLogs,
+      filters: {
+        actions: actionOptions.map((option) => option.value),
+        entityTypes: Array.from(new Set(
+          entityOptions.map((option) => canonicalizeAuditEntityType(option.value))
+        )).sort(),
+      },
+    });
   } catch (error) {
     console.error('Audit Logs API error:', error);
     return internalError();

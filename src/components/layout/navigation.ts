@@ -26,6 +26,11 @@ export interface NavigationGroup {
   items: NavigationItem[]
 }
 
+export interface NavigationBreadcrumb {
+  groupLabel: string | null
+  title: string
+}
+
 const operatorNavigation: NavigationGroup[] = [
   {
     label: "Operasional",
@@ -81,9 +86,17 @@ export function isNavigationItemActive(pathname: string, href: string): boolean 
 }
 
 export function getNavigationTitle(pathname: string, role: AppRole): string {
-  const item = getNavigation(role)
-    .flatMap((group) => group.items)
-    .find((entry) => isNavigationItemActive(pathname, entry.href))
+  return getNavigationBreadcrumb(pathname, role).title
+}
 
-  return item?.title ?? "GSU Pantau"
+export function getNavigationBreadcrumb(pathname: string, role: AppRole): NavigationBreadcrumb {
+  for (const group of getNavigation(role)) {
+    const item = group.items.find((entry) => isNavigationItemActive(pathname, entry.href))
+
+    if (item) {
+      return { groupLabel: group.label, title: item.title }
+    }
+  }
+
+  return { groupLabel: null, title: "GSU Pantau" }
 }

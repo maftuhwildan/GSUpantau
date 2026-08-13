@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { LogOut, Radio, ShieldCheck, User } from "lucide-react"
+import { ChevronRight, LogOut, Radio, ShieldCheck, User } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
-import { getNavigationTitle, type AppRole } from "./navigation"
+import { getNavigationBreadcrumb, type AppRole } from "./navigation"
 import { useWebSocket } from "./ws-provider"
 
 interface HeaderDevice {
@@ -38,6 +38,7 @@ export function Header({ userEmail = "user@local.test", role = "OPERATOR" }: Hea
   const { lastMessage } = useWebSocket()
   const [lines, setLines] = useState<HeaderLine[]>([])
   const [healthLoaded, setHealthLoaded] = useState(false)
+  const breadcrumb = getNavigationBreadcrumb(pathname, role)
 
   const fetchHealth = useCallback(async () => {
     try {
@@ -106,9 +107,22 @@ export function Header({ userEmail = "user@local.test", role = "OPERATOR" }: Hea
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur-sm sm:h-16 sm:px-5">
       <SidebarTrigger className="size-10 sm:size-9" />
       <div className="h-5 w-px bg-border" aria-hidden="true" />
-      <h1 className="min-w-0 flex-1 truncate font-heading text-sm font-semibold sm:text-base">
-        {getNavigationTitle(pathname, role)}
-      </h1>
+      <div className="min-w-0 flex-1">
+        <h1 className="truncate font-heading text-sm font-medium sm:hidden">
+          {breadcrumb.title}
+        </h1>
+        <nav aria-label="Breadcrumb" className="hidden min-w-0 items-center gap-1.5 text-sm sm:flex">
+          {breadcrumb.groupLabel ? (
+            <>
+              <span className="truncate text-muted-foreground">{breadcrumb.groupLabel}</span>
+              <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            </>
+          ) : null}
+          <span className="truncate font-heading font-medium text-foreground" aria-current="page">
+            {breadcrumb.title}
+          </span>
+        </nav>
+      </div>
 
       <StatusBadge tone={healthTone} className="max-w-40 shrink-0 sm:max-w-none">
         <Radio className={systemHealth.status === "ONLINE" ? "animate-pulse" : ""} />

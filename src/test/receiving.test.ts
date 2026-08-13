@@ -287,6 +287,28 @@ describe('Receiving Management (Batch 4)', () => {
     });
   });
 
+  describe('Receiving List Filters', () => {
+    it('combines status and search filters using the values sent by the Surat Jalan page', async () => {
+      const req = new NextRequest(
+        'http://localhost:3000/api/receivings?status=DRAFT&search=SJ-TEST-001',
+        {
+          method: 'GET',
+          headers: { cookie: `${SESSION_COOKIE_NAME}=${adminToken}` },
+        }
+      );
+
+      const res = await getReceivingsHandler(req);
+      expect(res.status).toBe(200);
+
+      const json = await res.json();
+      expect(json.receivings.length).toBeGreaterThanOrEqual(1);
+      expect(json.receivings.every((receiving: any) => receiving.status === 'DRAFT')).toBe(true);
+      expect(
+        json.receivings.some((receiving: any) => receiving.deliveryNoteNumber === 'SJ-TEST-001')
+      ).toBe(true);
+    });
+  });
+
   describe('Operator Authorization Restrictions', () => {
     it('should allow Operator to view receivings list', async () => {
       const req = new NextRequest('http://localhost:3000/api/receivings', {

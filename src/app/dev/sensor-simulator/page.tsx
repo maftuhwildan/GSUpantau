@@ -12,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { applyDeviceHealthViewUpdate } from "@/lib/device-health-view";
+import { createClientUuid } from "@/lib/client-uuid";
 import {
   Radio,
   Play,
@@ -91,7 +92,7 @@ export default function SensorSimulatorPage() {
 
   // A boot gets its own identity, while sequence only needs to live in RAM.
   useEffect(() => {
-    setBootId(crypto.randomUUID());
+    setBootId(createClientUuid());
     setSequence(0);
   }, []);
 
@@ -177,7 +178,7 @@ export default function SensorSimulatorPage() {
 
   // Sync selected line / device options
   const handleLineChange = (lineCode: string) => {
-    setBootId(crypto.randomUUID());
+    setBootId(createClientUuid());
     setSequence(0);
     setLastSentEvent(null);
     setSelectedLineCode(lineCode);
@@ -193,7 +194,7 @@ export default function SensorSimulatorPage() {
   };
 
   const handleDeviceChange = (deviceCode: string) => {
-    setBootId(crypto.randomUUID());
+    setBootId(createClientUuid());
     setSequence(0);
     setLastSentEvent(null);
     setSelectedDeviceCode(deviceCode);
@@ -365,7 +366,7 @@ export default function SensorSimulatorPage() {
     if (!selectedDeviceCode || !selectedLineCode) return;
 
     const newSeq = 0; // Simulate real hardware reset to 0
-    const newBootId = crypto.randomUUID();
+    const newBootId = createClientUuid();
 
     // Reboot changes identity even if the restart notification cannot reach
     // the server. Future detections must still use the new boot namespace.
