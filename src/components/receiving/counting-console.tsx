@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from '@/components/ui/sonner';
+import { getCountingProgressPresentation } from '@/lib/counting-progress';
 import {
   Truck,
   Square,
@@ -96,6 +98,15 @@ export function CountingConsole({
   const actual = session.actualCount;
   const difference = session.differenceCount;
   const diffPercent = session.differencePercent;
+  const progress = getCountingProgressPresentation(manifest, actual);
+  const progressTone =
+    progress.state === 'OVER'
+      ? 'warning'
+      : progress.state === 'MATCHED'
+      ? 'success'
+      : progress.state === 'BELOW'
+      ? 'info'
+      : 'neutral';
   const deviceStatus = session.deviceStatus?.status || 'UNKNOWN';
   const deviceStatusTone =
     deviceStatus === 'ONLINE'
@@ -129,6 +140,9 @@ export function CountingConsole({
       }
 
       setShowFinishDialog(false);
+      toast.success(
+        `Penghitungan selesai: hasil sensor ${(json.session?.actual_count ?? actual).toLocaleString('id-ID')} dari manifest ${manifest.toLocaleString('id-ID')} ekor.`
+      );
       if (onFinishSuccess) {
         onFinishSuccess({
           actualCount: json.session.actual_count,
@@ -165,6 +179,7 @@ export function CountingConsole({
       }
 
       setShowCancelDialog(false);
+      toast.success('Sesi penghitungan berhasil dibatalkan.');
       if (onCancelSuccess) {
         onCancelSuccess();
       }
@@ -252,7 +267,7 @@ export function CountingConsole({
                     <Radio className="size-4 animate-pulse" />
                   </span>
                   <span className="text-xs font-medium text-muted-foreground">Actual hitung sensor</span>
-                  <div className="font-heading text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl">
+                  <div className="font-heading text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl" aria-live="polite">
                     {actual.toLocaleString('id-ID')}
                   </div>
                   <span className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
@@ -267,20 +282,32 @@ export function CountingConsole({
               <Separator />
 
               {/* Progress & Variance Indicator */}
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Selisih berjalan</p>
-                  <p className="font-heading text-2xl font-semibold tabular-nums">
-                    {difference > 0 ? `+${difference.toLocaleString('id-ID')}` : difference.toLocaleString('id-ID')}{' '}
-                    ekor{' '}
-                    {diffPercent !== null && (
-                      <span className="text-xs font-normal">
-                        ({diffPercent > 0 ? `+${diffPercent}` : diffPercent}%)
-                      </span>
-                    )}
-                  </p>
+              <div className="space-y-2">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Selisih berjalan</p>
+                    <p className="font-heading text-2xl font-semibold tabular-nums">
+                      {progress.differenceLabel}
+                    </p>
+                  </div>
+                  <StatusBadge tone={progressTone}>
+                    {progress.progressLabel}
+                  </StatusBadge>
                 </div>
-                <StatusBadge tone="warning">BELUM SELESAI</StatusBadge>
+                {progress.barPercent > 0 && (
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        progress.state === 'OVER'
+                          ? 'bg-warning'
+                          : progress.state === 'MATCHED'
+                          ? 'bg-success'
+                          : 'bg-primary'
+                      }`}
+                      style={{ width: `${progress.barPercent}%` }}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Critical SOP Warning Box */}

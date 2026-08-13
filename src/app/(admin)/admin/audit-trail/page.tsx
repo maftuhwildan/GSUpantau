@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { History, RefreshCw, AlertCircle, Eye, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import { DateRangePicker, type DateOnlyRange } from '@/components/ui/date-picker
 import { PageHeader } from '@/components/layout/PageHeader';
 import { appendDateRangeParams } from '@/lib/ui-date';
 import { formatAuditActionLabel, formatAuditEntityLabel } from '@/lib/audit-filter';
+import { useUrlFilters } from '@/lib/use-url-filters';
 
 export default function AdminAuditTrailPage() {
   const [logs, setLogs] = useState<any[]>([]);
@@ -24,15 +25,33 @@ export default function AdminAuditTrailPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const { lastMessage } = useWebSocket();
 
-  // Filters
-  const [actionFilter, setActionFilter] = useState('ALL');
-  const [entityFilter, setEntityFilter] = useState('ALL');
-  const [actorFilter, setActorFilter] = useState('ALL');
-  const [dateRange, setDateRange] = useState<DateOnlyRange>({});
+  // Persistent URL Filters
+  const { filters, setFilter, resetFilters } = useUrlFilters({
+    action: 'ALL',
+    entity_type: 'ALL',
+    actor_id: 'ALL',
+    date_from: undefined,
+    date_to: undefined,
+  });
+
+  const actionFilter = filters.action || 'ALL';
+  const entityFilter = filters.entity_type || 'ALL';
+  const actorFilter = filters.actor_id || 'ALL';
+  const dateRange: DateOnlyRange = useMemo(
+    () => ({
+      from: filters.date_from || undefined,
+      to: filters.date_to || undefined,
+    }),
+    [filters.date_from, filters.date_to]
+  );
+
+  const setDateRange = (range: DateOnlyRange) => {
+    setFilter('date_from', range.from || undefined);
+    setFilter('date_to', range.to || undefined);
+  };
+
   const [actionOptions, setActionOptions] = useState<string[]>([]);
   const [entityOptions, setEntityOptions] = useState<string[]>([]);
-
-  // Selected Log for Detail Modal
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
 
   const fetchUsers = useCallback(async () => {
@@ -61,9 +80,9 @@ export default function AdminAuditTrailPage() {
 
       const res = await fetch(`/api/audit-logs?${params.toString()}`);
       const result = await res.json();
-      
+
       if (!res.ok) throw new Error(result.error?.message || 'Gagal mengambil data audit logs');
-      
+
       setLogs(result.logs || []);
       setActionOptions(result.filters?.actions || []);
       setEntityOptions(result.filters?.entityTypes || []);
@@ -95,13 +114,6 @@ export default function AdminAuditTrailPage() {
     }
   }, [lastMessage, fetchLogs]);
 
-  const handleResetFilters = () => {
-    setActionFilter('ALL');
-    setEntityFilter('ALL');
-    setActorFilter('ALL');
-    setDateRange({});
-  };
-
   const hasActiveFilters = Boolean(
     actionFilter !== 'ALL' ||
     entityFilter !== 'ALL' ||
@@ -112,11 +124,16 @@ export default function AdminAuditTrailPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Audit Trail" description="Rekam jejak aktivitas sistem yang immutable dan tidak dapat diubah atau dihapus." actions={
-          <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading} className="gap-1">
+      <PageHeader
+        title="Audit Trail"
+        description="Rekam jejak aktivitas sistem yang immutable dan tidak dapat diubah atau dihapus."
+        eyebrow="Admin"
+        actions={
+          <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading} className="gap-1 min-h-[44px] sm:min-h-0">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
-      } />
+        }
+      />
 
       {errorMsg && (
         <Alert variant="destructive">
@@ -141,35 +158,50 @@ export default function AdminAuditTrailPage() {
           <div className="grid w-full flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="audit-action" className="text-xs">Aksi</Label>
-              <Select value={actionFilter} onValueChange={setActionFilter}><SelectTrigger id="audit-action" className="h-11! w-full"><SelectValue /></SelectTrigger><SelectContent>
-                <SelectItem value="ALL">Semua Aksi</SelectItem>
-                {actionOptions.map((action) => (
-                  <SelectItem key={action} value={action}>{formatAuditActionLabel(action)}</SelectItem>
-                ))}
-              </SelectContent></Select>
+              <Select value={actionFilter} onValueChange={(val) => setFilter('action', val)}>
+                <SelectTrigger id="audit-action" className="h-11! w-full text-xs min-h-[44px] sm:min-h-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Semua Aksi</SelectItem>
+                  {actionOptions.map((action) => (
+                    <SelectItem key={action} value={action}>{formatAuditActionLabel(action)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="audit-entity" className="text-xs">Tipe entitas</Label>
-              <Select value={entityFilter} onValueChange={setEntityFilter}><SelectTrigger id="audit-entity" className="h-11! w-full"><SelectValue /></SelectTrigger><SelectContent>
-                <SelectItem value="ALL">Semua Entitas</SelectItem>
-                {entityOptions.map((entity) => (
-                  <SelectItem key={entity} value={entity}>{formatAuditEntityLabel(entity)}</SelectItem>
-                ))}
-              </SelectContent></Select>
+              <Select value={entityFilter} onValueChange={(val) => setFilter('entity_type', val)}>
+                <SelectTrigger id="audit-entity" className="h-11! w-full text-xs min-h-[44px] sm:min-h-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Semua Entitas</SelectItem>
+                  {entityOptions.map((entity) => (
+                    <SelectItem key={entity} value={entity}>{formatAuditEntityLabel(entity)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="audit-actor" className="text-xs">Aktor</Label>
-              <Select value={actorFilter} onValueChange={setActorFilter}><SelectTrigger id="audit-actor" className="h-11! w-full"><SelectValue /></SelectTrigger><SelectContent>
-                <SelectItem value="ALL">Semua Aktor</SelectItem>
-                <SelectItem value="SYSTEM">Sistem</SelectItem>
-                {usersList.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name} ({u.roles?.join(', ') || 'USER'})
-                  </SelectItem>
-                ))}
-              </SelectContent></Select>
+              <Select value={actorFilter} onValueChange={(val) => setFilter('actor_id', val)}>
+                <SelectTrigger id="audit-actor" className="h-11! w-full text-xs min-h-[44px] sm:min-h-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Semua Aktor</SelectItem>
+                  <SelectItem value="SYSTEM">Sistem</SelectItem>
+                  {usersList.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name} ({u.roles?.join(', ') || 'USER'})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -185,9 +217,9 @@ export default function AdminAuditTrailPage() {
 
           <Button
             variant="outline"
-            onClick={handleResetFilters}
+            onClick={resetFilters}
             disabled={loading || !hasActiveFilters}
-            className="h-11 w-full shrink-0 gap-1.5 xl:w-auto"
+            className="h-11 w-full shrink-0 gap-1.5 xl:w-auto min-h-[44px] sm:min-h-0"
           >
             <RotateCcw className="size-3.5" /> Reset filter
           </Button>
@@ -253,10 +285,11 @@ export default function AdminAuditTrailPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => setSelectedLog(log)}
-                          className="h-7 w-7 p-0"
+                          className="h-9 w-9 p-0 min-h-[44px] sm:min-h-0 min-w-[44px] sm:min-w-0"
                           title="Lihat Detail Before / After"
+                          aria-label="Lihat Detail Before / After"
                         >
-                          <Eye className="h-3.5 w-3.5 text-muted-foreground " />
+                          <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                         </Button>
                       </TableCell>
                     </TableRow>

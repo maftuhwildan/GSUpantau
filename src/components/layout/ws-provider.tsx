@@ -3,20 +3,26 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { WebSocketMessage } from '@/lib/ws';
 
-type LocalRealtimeMessage = WebSocketMessage | {
+export type RealtimeConnectionState = 'CONNECTING' | 'LIVE' | 'POLLING';
+
+export type LocalRealtimeMessage = WebSocketMessage | {
   type: 'realtime.reconnected' | 'realtime.poll';
   occurred_at: string;
   payload: Record<string, unknown>;
 };
 
-type WebSocketContextType = {
+export type WebSocketContextType = {
   lastMessage: LocalRealtimeMessage | null;
   isConnected: boolean;
+  connectionState: RealtimeConnectionState;
+  lastRealtimeActivityAt: string | null;
 };
 
 const WebSocketContext = createContext<WebSocketContextType>({
   lastMessage: null,
   isConnected: false,
+  connectionState: 'CONNECTING',
+  lastRealtimeActivityAt: null,
 });
 
 export const useWebSocket = () => useContext(WebSocketContext);
@@ -24,6 +30,8 @@ export const useWebSocket = () => useContext(WebSocketContext);
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [lastMessage, setLastMessage] = useState<LocalRealtimeMessage | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [connectionState, setConnectionState] = useState<RealtimeConnectionState>('CONNECTING');
+  const [lastRealtimeActivityAt, setLastRealtimeActivityAt] = useState<string | null>(null);
 
   useEffect(() => {
     let socket: WebSocket | null = null;
@@ -34,11 +42,13 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     let hasConnectedOnce = false;
 
     function emitLocal(type: 'realtime.reconnected' | 'realtime.poll', payload: Record<string, unknown> = {}) {
+      const now = new Date().toISOString();
       setLastMessage({
         type,
-        occurred_at: new Date().toISOString(),
+        occurred_at: now,
         payload,
       });
+      setLastRealtimeActivityAt(now);
     }
 
     function connect() {
@@ -46,7 +56,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       socket = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
       socket.onopen = () => {
+        const now = new Date().toISOString();
         setIsConnected(true);
+        setConnectionState('LIVE');
+        setLastRealtimeActivityAt(now);
         retryCount = 0;
 
         if (hasConnectedOnce) {
@@ -57,7 +70,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
       socket.onmessage = (event) => {
         try {
-          setLastMessage(JSON.parse(event.data) as WebSocketMessage);
+          const now = new Date().toISOString();
+          const parsed = JSON.parse(event.data) as WebSocketMessage;
+          setLastMessage(parsed);
+          setLastRealtimeActivityAt(now);
         } catch (err) {
           console.error('Pesan realtime tidak valid:', err);
         }
@@ -65,6 +81,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
       socket.onclose = () => {
         setIsConnected(false);
+        setConnectionState('POLLING');
         if (closedByUnmount) return;
 
         const delay = Math.min(30_000, 1_000 * 2 ** retryCount);
@@ -94,7 +111,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <WebSocketContext.Provider value={{ lastMessage, isConnected }}>
+    <WebSocketContext.Provider value={{ lastMessage, isConnected, connectionState, lastRealtimeActivityAt }}>
       {children}
     </WebSocketContext.Provider>
   );

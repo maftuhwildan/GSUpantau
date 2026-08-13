@@ -13,10 +13,12 @@ import { StartCountingDialog } from '@/components/receiving/start-counting-dialo
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useUrlFilters } from '@/lib/use-url-filters';
+import { toast } from '@/components/ui/sonner';
 
 const receivingStatusFilters = [
   { value: 'ALL', label: 'Semua' },
-  { value: 'DRAFT', label: 'Draft' },
+  { value: 'DRAFT', label: 'Draf' },
   { value: 'WAITING', label: 'Menunggu' },
   { value: 'COUNTING', label: 'Penghitungan' },
   { value: 'COMPLETED', label: 'Selesai' },
@@ -30,8 +32,14 @@ export default function AdminReceivingPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const [activeTab, setActiveTab] = useState<ReceivingStatusFilter>('ALL');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  // Persistent URL Filters
+  const { filters, setFilter } = useUrlFilters({
+    status: 'ALL',
+    search: '',
+  });
+
+  const activeTab = (filters.status as ReceivingStatusFilter) || 'ALL';
+  const searchQuery = filters.search || '';
 
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [receivingToEdit, setReceivingToEdit] = useState<ReceivingData | null>(null);
@@ -86,7 +94,7 @@ export default function AdminReceivingPage() {
   };
 
   const handlePublish = async (rec: ReceivingData) => {
-    if (!confirm(`Terbitkan Surat Jalan ${rec.deliveryNoteNumber} ke dalam antrean WAITING?`)) {
+    if (!confirm(`Terbitkan Surat Jalan ${rec.deliveryNoteNumber} ke dalam antrean Menunggu?`)) {
       return;
     }
 
@@ -100,9 +108,11 @@ export default function AdminReceivingPage() {
         throw new Error(data.error?.message || 'Gagal menerbitkan Surat Jalan.');
       }
 
+      toast.success(`Surat Jalan ${rec.deliveryNoteNumber} berhasil diterbitkan ke antrean.`);
       fetchReceivings();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Terjadi kesalahan.');
+      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan.';
+      setErrorMsg(msg);
     }
   };
 
@@ -118,15 +128,22 @@ export default function AdminReceivingPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Kelola Surat Jalan" description="Input data manifest pengiriman truck, terbitkan antrean, atau revisi manifest dengan alasan audit." actions={<>
-          <Button variant="outline" size="sm" onClick={fetchReceivings} className="gap-1">
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
-          </Button>
-          <Button onClick={handleCreateNew} className="gap-1.5">
-            <Plus className="h-4 w-4" />
-            <span>Input Surat Jalan Baru (Draft)</span>
-          </Button>
-        </>} />
+      <PageHeader
+        title="Kelola Surat Jalan"
+        description="Input data manifest pengiriman truk, terbitkan antrean, atau revisi manifest dengan alasan audit."
+        eyebrow="Admin"
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={fetchReceivings} className="gap-1 min-h-[44px] sm:min-h-0">
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            </Button>
+            <Button onClick={handleCreateNew} className="gap-1.5 min-h-[44px] sm:min-h-0">
+              <Plus className="h-4 w-4" />
+              <span>Input Surat Jalan Baru (Draf)</span>
+            </Button>
+          </>
+        }
+      />
 
       {/* Filter & Search Bar */}
       <Card className="p-4">
@@ -135,15 +152,15 @@ export default function AdminReceivingPage() {
             <Input
               placeholder="Cari No. SJ / Plat / Supir / Supplier..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs"
+              onChange={(e) => setFilter('search', e.target.value)}
+              className="w-full text-xs min-h-[44px] sm:min-h-0"
             />
           </div>
           <div className="no-scrollbar w-full overflow-x-auto lg:w-auto">
             <ToggleGroup
               type="single"
               value={activeTab}
-              onValueChange={(value) => value && setActiveTab(value as ReceivingStatusFilter)}
+              onValueChange={(value) => value && setFilter('status', value)}
               variant="default"
               spacing={1}
               className="min-w-max rounded-2xl bg-muted/60 p-1 ring-1 ring-border/60"
@@ -154,7 +171,7 @@ export default function AdminReceivingPage() {
                   key={filter.value}
                   value={filter.value}
                   aria-label={`Tampilkan status ${filter.label}`}
-                  className="h-11 rounded-xl px-4 text-xs font-normal text-muted-foreground hover:bg-background/70 hover:text-foreground data-[state=on]:bg-primary data-[state=on]:font-medium data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm data-[state=on]:hover:bg-primary/90"
+                  className="h-11 rounded-xl px-4 text-xs font-normal text-muted-foreground hover:bg-background/70 hover:text-foreground data-[state=on]:bg-primary data-[state=on]:font-medium data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm data-[state=on]:hover:bg-primary/90 min-h-[44px]"
                 >
                   {filter.label}
                 </ToggleGroupItem>
@@ -176,7 +193,7 @@ export default function AdminReceivingPage() {
         <CardHeader className="pb-3">
           <CardTitle>Daftar Surat Jalan Penerimaan</CardTitle>
           <CardDescription className="text-xs">
-            Actual count dihitung otomatis secara derivatif dari log sensor dan tidak dapat diedit manual.
+            Hasil sensor dihitung otomatis secara derivatif dari log sensor dan tidak dapat diedit manual.
           </CardDescription>
         </CardHeader>
 
@@ -198,7 +215,10 @@ export default function AdminReceivingPage() {
         open={formDialogOpen}
         onOpenChange={setFormDialogOpen}
         receivingToEdit={receivingToEdit}
-        onSuccess={fetchReceivings}
+        onSuccess={() => {
+          toast.success(receivingToEdit ? 'Surat Jalan berhasil diperbarui.' : 'Surat Jalan baru (Draf) berhasil dibuat.');
+          fetchReceivings();
+        }}
       />
 
       <ReceivingCancelDialog
@@ -206,7 +226,10 @@ export default function AdminReceivingPage() {
         onOpenChange={setCancelDialogOpen}
         receivingId={receivingToCancel?.id || null}
         deliveryNoteNumber={receivingToCancel?.deliveryNoteNumber || ''}
-        onSuccess={fetchReceivings}
+        onSuccess={() => {
+          toast.success('Surat Jalan berhasil dibatalkan.');
+          fetchReceivings();
+        }}
       />
 
       <StartCountingDialog

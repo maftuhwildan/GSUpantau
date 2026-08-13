@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { ChevronRight, LogOut, Radio, ShieldCheck, User } from "lucide-react"
+import { Activity, ChevronRight, Loader2, LogOut, Radio, RefreshCw, ShieldCheck, User } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { getNavigationBreadcrumb, type AppRole } from "./navigation"
 import { useWebSocket } from "./ws-provider"
 
@@ -35,7 +36,7 @@ interface HeaderProps {
 export function Header({ userEmail = "user@local.test", role = "OPERATOR" }: HeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { lastMessage } = useWebSocket()
+  const { lastMessage, connectionState } = useWebSocket()
   const [lines, setLines] = useState<HeaderLine[]>([])
   const [healthLoaded, setHealthLoaded] = useState(false)
   const breadcrumb = getNavigationBreadcrumb(pathname, role)
@@ -94,6 +95,33 @@ export function Header({ userEmail = "user@local.test", role = "OPERATOR" }: Hea
         ? "neutral"
         : "danger"
 
+  const realtimeInfo = useMemo(() => {
+    switch (connectionState) {
+      case "LIVE":
+        return {
+          label: "Data langsung",
+          tone: "success" as StatusTone,
+          tooltip: "Pembaruan diterima melalui WebSocket",
+          icon: <Activity className="size-3.5 motion-safe:animate-pulse" aria-hidden="true" />,
+        }
+      case "POLLING":
+        return {
+          label: "Mode cadangan",
+          tone: "warning" as StatusTone,
+          tooltip: "Aplikasi tetap memperbarui data melalui polling",
+          icon: <RefreshCw className="size-3.5" aria-hidden="true" />,
+        }
+      case "CONNECTING":
+      default:
+        return {
+          label: "Menyambungkan",
+          tone: "neutral" as StatusTone,
+          tooltip: "Koneksi realtime sedang dibangun",
+          icon: <Loader2 className="size-3.5 motion-safe:animate-spin" aria-hidden="true" />,
+        }
+    }
+  }, [connectionState])
+
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" })
@@ -104,7 +132,7 @@ export function Header({ userEmail = "user@local.test", role = "OPERATOR" }: Hea
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur-sm sm:h-16 sm:px-5">
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-1.5 border-b bg-background/90 px-3 backdrop-blur-sm sm:h-16 sm:gap-2 sm:px-5">
       <SidebarTrigger className="size-10 sm:size-9" />
       <div className="h-5 w-px bg-border" aria-hidden="true" />
       <div className="min-w-0 flex-1">
@@ -124,8 +152,25 @@ export function Header({ userEmail = "user@local.test", role = "OPERATOR" }: Hea
         </nav>
       </div>
 
-      <StatusBadge tone={healthTone} className="max-w-40 shrink-0 sm:max-w-none">
-        <Radio className={systemHealth.status === "ONLINE" ? "animate-pulse" : ""} />
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex shrink-0">
+              <StatusBadge tone={realtimeInfo.tone} className="max-w-32 shrink-0 sm:max-w-none">
+                {realtimeInfo.icon}
+                <span className="hidden sm:inline">{realtimeInfo.label}</span>
+                <span className="sr-only sm:hidden">{realtimeInfo.label}</span>
+              </StatusBadge>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>{realtimeInfo.tooltip}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      <StatusBadge tone={healthTone} className="max-w-32 shrink-0 sm:max-w-none">
+        <Radio className={systemHealth.status === "ONLINE" ? "motion-safe:animate-pulse" : ""} />
         <span className="truncate">{systemHealth.label}</span>
       </StatusBadge>
 

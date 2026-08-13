@@ -10,7 +10,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Radio, PlayCircle, Layers, AlertCircle } from 'lucide-react';
+import { Radio, PlayCircle, Layers, AlertCircle, Clock } from 'lucide-react';
 import { useWebSocket } from '@/components/layout/ws-provider';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -46,6 +46,8 @@ export default function OperatorActiveSessionPage() {
     fetchLines();
   }, []);
 
+  const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
+
   // Fetch active session for selected line
   const fetchActiveSession = useCallback(async () => {
     if (!selectedLineId) return;
@@ -61,6 +63,7 @@ export default function OperatorActiveSessionPage() {
 
       const json = await res.json();
       setSessionDetail(json.activeSession);
+      setLastFetchedAt(new Date().toLocaleTimeString('id-ID'));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Terjadi kesalahan server';
       setError(msg);
@@ -111,12 +114,18 @@ export default function OperatorActiveSessionPage() {
         description="Pantau hitungan sensor ESP32 dan selesaikan sesi operasional."
         actions={
           <>
+            {lastFetchedAt && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground mr-1">
+                <Clock className="size-3 shrink-0" />
+                Diperbarui {lastFetchedAt}
+              </span>
+            )}
             {initialLoading ? (
               <StatusBadge tone="neutral">MEMUAT</StatusBadge>
             ) : sessionDetail ? (
-              <StatusBadge tone="warning">COUNTING</StatusBadge>
+              <StatusBadge tone="warning">Sedang dihitung</StatusBadge>
             ) : (
-              <StatusBadge tone="neutral">IDLE / SIAP</StatusBadge>
+              <StatusBadge tone="neutral">Siap</StatusBadge>
             )}
 
             {/* Line Selection / Non-interactive Badge */}

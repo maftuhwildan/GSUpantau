@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Download, RefreshCw, AlertCircle, RotateCcw, FileText, CheckCircle2, Scale, Radio, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -17,6 +17,7 @@ import { appendDateRangeParams } from '@/lib/ui-date';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { LoadingState } from '@/components/ui/states';
+import { useUrlFilters } from '@/lib/use-url-filters';
 
 const receivingChartConfig = {
   manifest: { label: 'Manifest', color: 'var(--chart-1)' },
@@ -29,9 +30,26 @@ export default function AdminReportsPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Filter States
-  const [dateRange, setDateRange] = useState<DateOnlyRange>({});
-  const [lineId, setLineId] = useState('ALL');
+  // Persistent URL Filters
+  const { filters, setFilter, resetFilters } = useUrlFilters({
+    date_from: undefined,
+    date_to: undefined,
+    line_id: 'ALL',
+  });
+
+  const lineId = filters.line_id || 'ALL';
+  const dateRange: DateOnlyRange = useMemo(
+    () => ({
+      from: filters.date_from || undefined,
+      to: filters.date_to || undefined,
+    }),
+    [filters.date_from, filters.date_to]
+  );
+
+  const setDateRange = (range: DateOnlyRange) => {
+    setFilter('date_from', range.from || undefined);
+    setFilter('date_to', range.to || undefined);
+  };
 
   const fetchLines = useCallback(async () => {
     try {
@@ -56,9 +74,9 @@ export default function AdminReportsPage() {
 
       const res = await fetch(`/api/reports?${params.toString()}`);
       const result = await res.json();
-      
+
       if (!res.ok) throw new Error(result.error?.message || 'Gagal mengambil data reports');
-      
+
       setData(result);
     } catch (err: any) {
       setErrorMsg(err.message || 'Terjadi kesalahan sistem');
@@ -75,11 +93,6 @@ export default function AdminReportsPage() {
     fetchReports();
   }, [fetchReports]);
 
-  const handleResetFilters = () => {
-    setDateRange({});
-    setLineId('ALL');
-  };
-
   const hasActiveFilters = Boolean(dateRange.from || dateRange.to || lineId !== 'ALL');
 
   const handleExportCSV = () => {
@@ -93,14 +106,21 @@ export default function AdminReportsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Laporan Operasional" description="Laporan penerimaan, actual vs manifest, dan efisiensi sensor." actions={<>
-          <Button variant="outline" size="sm" onClick={fetchReports} disabled={loading} className="gap-1">
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
-          </Button>
-          <Button size="sm" onClick={handleExportCSV} disabled={loading || !data} className="gap-1">
-            <Download className="h-3.5 w-3.5" /> Export CSV
-          </Button>
-        </>} />
+      <PageHeader
+        title="Laporan Operasional"
+        description="Laporan penerimaan, hasil sensor vs manifest, dan efisiensi sensor."
+        eyebrow="Admin"
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={fetchReports} disabled={loading} className="gap-1 min-h-[44px] sm:min-h-0">
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            </Button>
+            <Button size="sm" onClick={handleExportCSV} disabled={loading || !data} className="gap-1 min-h-[44px] sm:min-h-0">
+              <Download className="h-3.5 w-3.5" /> Export CSV
+            </Button>
+          </>
+        }
+      />
 
       {errorMsg && (
         <Alert variant="destructive">
@@ -134,22 +154,27 @@ export default function AdminReportsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="report-line" className="text-xs">Jalur</Label>
-              <Select value={lineId} onValueChange={setLineId}><SelectTrigger id="report-line" className="h-11! w-full"><SelectValue /></SelectTrigger><SelectContent>
-                <SelectItem value="ALL">Semua Line</SelectItem>
-                {lines.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>
-                    {l.lineCode} - {l.name}
-                  </SelectItem>
-                ))}
-              </SelectContent></Select>
+              <Select value={lineId} onValueChange={(val) => setFilter('line_id', val)}>
+                <SelectTrigger id="report-line" className="h-11! w-full text-xs min-h-[44px] sm:min-h-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Semua Jalur</SelectItem>
+                  {lines.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.lineCode} - {l.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           <Button
             variant="outline"
-            onClick={handleResetFilters}
+            onClick={resetFilters}
             disabled={loading || !hasActiveFilters}
-            className="h-11 w-full shrink-0 gap-1.5 xl:w-auto"
+            className="h-11 w-full shrink-0 gap-1.5 xl:w-auto min-h-[44px] sm:min-h-0"
           >
             <RotateCcw className="size-3.5" /> Reset filter
           </Button>
@@ -164,15 +189,15 @@ export default function AdminReportsPage() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard label="Total Manifest Selesai" value={(data.summary?.totalManifest || 0).toLocaleString('id-ID')} detail="Filter terpilih" icon={FileText} />
-            <KpiCard label="Total Actual Dihitung" value={(data.summary?.totalActual || 0).toLocaleString('id-ID')} detail="Filter terpilih" icon={CheckCircle2} tone="success" />
+            <KpiCard label="Total Hasil Sensor" value={(data.summary?.totalActual || 0).toLocaleString('id-ID')} detail="Filter terpilih" icon={CheckCircle2} tone="success" />
             <KpiCard label="Variance (Selisih)" value={`${data.summary?.totalDifference > 0 ? '+' : ''}${(data.summary?.totalDifference || 0).toLocaleString('id-ID')}`} detail={`${data.summary?.totalDifferencePercent || 0}% Total`} icon={Scale} tone={data.summary?.totalDifference < 0 ? 'warning' : 'success'} />
-            <KpiCard label="Kualitas Deteksi Sensor" value={`${(data.summary?.assignedDetections || 0).toLocaleString('id-ID')} / ${(data.summary?.unassignedDetections || 0).toLocaleString('id-ID')}`} detail="Assigned / Unassigned" icon={Radio} tone="info" />
+            <KpiCard label="Kualitas Deteksi Sensor" value={`${(data.summary?.assignedDetections || 0).toLocaleString('id-ID')} / ${(data.summary?.unassignedDetections || 0).toLocaleString('id-ID')}`} detail="Terhubung Sesi / Tanpa Sesi" icon={Radio} tone="info" />
           </div>
 
           {getRecentReceivingChartData(data.list).length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Manifest vs Actual</CardTitle>
+                <CardTitle>Manifest vs Hasil Sensor</CardTitle>
                 <CardDescription>12 penerimaan terbaru dari hasil filter aktif.</CardDescription>
               </CardHeader>
               <CardContent>
@@ -202,7 +227,7 @@ export default function AdminReportsPage() {
               <div>
                 <CardTitle>Riwayat Penerimaan Selesai</CardTitle>
                 <CardDescription className="text-xs">
-                  Daftar semua truck yang telah selesai dihitung sesuai filter.
+                  Daftar semua truk yang telah selesai dihitung sesuai filter.
                 </CardDescription>
               </div>
               <Badge variant="outline" className="text-xs font-normal">
@@ -215,10 +240,10 @@ export default function AdminReportsPage() {
                   <TableHeader className="bg-muted ">
                     <TableRow>
                       <TableHead className="text-xs w-[120px]">Tanggal</TableHead>
-                      <TableHead className="text-xs">No. SJ / Truck</TableHead>
-                      <TableHead className="text-xs">Line</TableHead>
+                      <TableHead className="text-xs">No. SJ / Truk</TableHead>
+                      <TableHead className="text-xs">Jalur</TableHead>
                       <TableHead className="text-xs text-right">Manifest</TableHead>
-                      <TableHead className="text-xs text-right">Actual</TableHead>
+                      <TableHead className="text-xs text-right">Hasil Sensor</TableHead>
                       <TableHead className="text-xs text-right">Selisih</TableHead>
                       <TableHead className="text-xs text-right">%</TableHead>
                     </TableRow>

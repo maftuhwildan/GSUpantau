@@ -13,6 +13,7 @@ import {
   Wifi,
   CheckCircle2,
   ListOrdered,
+  Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -20,10 +21,10 @@ import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { useWebSocket } from '@/components/layout/ws-provider';
-import { KpiCard } from '@/components/dashboard/KpiCard';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { StartCountingDialog } from '@/components/receiving/start-counting-dialog';
+import { getCountingProgressPresentation } from '@/lib/counting-progress';
 import type { OperatorDashboardData } from '@/types/operator-dashboard';
 
 export default function OperatorDashboardPage() {
@@ -31,6 +32,7 @@ export default function OperatorDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [startDialogOpen, setStartDialogOpen] = useState(false);
+  const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
   const { lastMessage } = useWebSocket();
 
   const fetchDashboard = useCallback(async () => {
@@ -43,6 +45,7 @@ export default function OperatorDashboardPage() {
       if (!res.ok) throw new Error(result.error?.message || 'Gagal mengambil data dashboard');
 
       setData(result);
+      setLastFetchedAt(new Date().toLocaleTimeString('id-ID'));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Terjadi kesalahan sistem';
       setErrorMsg(msg);
@@ -89,15 +92,12 @@ export default function OperatorDashboardPage() {
   const activeReceiving = activeSession?.receiving;
   const manifestCount = activeReceiving?.manifestCount || 0;
   const actualCount = activeSession?.actualCount || 0;
-  const activeDifference = activeSession ? actualCount - manifestCount : 0;
-
-  // Safe progress percentage calculation
-  const progressPercent = manifestCount > 0 ? Math.min(100, Math.round((actualCount / manifestCount) * 100)) : null;
+  const progress = getCountingProgressPresentation(manifestCount, actualCount);
 
   const deviceTone: 'success' | 'warning' | 'danger' | 'neutral' =
     deviceStatus === 'ONLINE'
       ? 'success'
-      : deviceStatus === 'DEGRADED'
+      : deviceStatus === 'DEGRADED' || deviceStatus === 'MAINTENANCE'
       ? 'warning'
       : deviceStatus === 'OFFLINE'
       ? 'danger'
@@ -110,9 +110,15 @@ export default function OperatorDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title="Dashboard Operator"
-        description="Pantau status penghitungan truck penerimaan ayam secara realtime."
+        description="Pantau status penghitungan truk penerimaan ayam secara realtime."
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            {lastFetchedAt && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground mr-1">
+                <Clock className="size-3 shrink-0" />
+                Diperbarui {lastFetchedAt}
+              </span>
+            )}
             {data.line && (
               <Badge variant="outline" className="gap-1.5 py-1 text-xs">
                 <Layers className="size-3.5 text-primary" />
@@ -120,30 +126,30 @@ export default function OperatorDashboardPage() {
               </Badge>
             )}
             <StatusBadge tone={data.line?.status === 'ACTIVE' ? 'success' : 'warning'}>
-              Jalur {data.line?.status || 'IDLE'}
+              Jalur {data.line?.status === 'ACTIVE' ? 'Siap' : data.line?.status || 'Siap'}
             </StatusBadge>
             <StatusBadge tone={activeSession ? 'warning' : 'neutral'}>
-              {activeSession ? 'Sesi Aktif' : 'IDLE'}
+              {activeSession ? 'Sesi Aktif' : 'Siap'}
             </StatusBadge>
           </div>
         }
       />
 
-      {/* Sensor Health Status Alert if Stale / Degraded / Offline */}
+      {/* Sensor Status Alert only if problem */}
       {data.device && deviceStatus !== 'ONLINE' && (
         <Alert variant={deviceStatus === 'OFFLINE' ? 'destructive' : 'default'}>
           <AlertTriangle className="size-4 shrink-0 text-warning" />
-          <AlertTitle>Peringatan Perangkat Sensor</AlertTitle>
+          <AlertTitle>Peringatan Perangkat Sensor ({deviceStatus})</AlertTitle>
           <AlertDescription>
-            Status sensor pada jalur ini adalah <strong>{deviceStatus}</strong>. ({data.device.deviceCode || 'N/A'}) - Pastikan koneksi alat fisik diperiksa sebelum penghitungan.
+            Status perangkat sensor pada jalur ini adalah <strong>{deviceStatus}</strong> ({data.device.deviceCode || 'N/A'}). Harap periksa koneksi sebelum penghitungan.
           </AlertDescription>
         </Alert>
       )}
 
       {/* Hero Section: Active Session or Line Ready Idle */}
       {activeSession ? (
-        <Card className="border-primary/20 bg-card">
-          <CardHeader className="border-b bg-muted/30">
+        <Card className="border-primary/30 bg-card shadow-sm">
+          <CardHeader className="border-b bg-muted/30 pb-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -151,17 +157,17 @@ export default function OperatorDashboardPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-lg">
-                      Truck Sedang Dihitung: {activeReceiving?.licensePlateSnapshot || '-'}
+                    <CardTitle className="text-lg font-semibold">
+                      Truk: {activeReceiving?.licensePlateSnapshot || '-'}
                     </CardTitle>
-                    <StatusBadge tone="warning">COUNTING</StatusBadge>
+                    <StatusBadge tone="warning">Sedang dihitung</StatusBadge>
                   </div>
-                  <CardDescription className="text-xs">
-                    No. Surat Jalan: <span className="font-medium text-foreground">{activeReceiving?.deliveryNoteNumber || '-'}</span> • Supplier: <span className="font-medium text-foreground">{activeReceiving?.supplierNameSnapshot || '-'}</span>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    No. Surat Jalan: <span className="font-medium text-foreground">{activeReceiving?.deliveryNoteNumber || '-'}</span> • Supplier: <span className="font-medium text-foreground">{activeReceiving?.supplierNameSnapshot || '-'}</span> • Jalur: <span className="font-medium text-foreground">{data.line?.name || 'Jalur 01'}</span>
                   </CardDescription>
                 </div>
               </div>
-              <Button asChild size="sm" className="gap-2">
+              <Button asChild size="default" className="gap-2">
                 <Link href="/active-session">
                   <Play className="size-4" />
                   <span>Buka Sesi Aktif</span>
@@ -171,54 +177,70 @@ export default function OperatorDashboardPage() {
           </CardHeader>
 
           <CardContent className="pt-6 space-y-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <KpiCard
-                label="Manifest Surat Jalan"
-                value={manifestCount.toLocaleString('id-ID')}
-                detail="Ekor terdaftar"
-                icon={Layers}
-                tone="info"
-              />
-              <KpiCard
-                label="Actual Sensor"
-                value={actualCount.toLocaleString('id-ID')}
-                detail={activeSession.lastDetection ? `Terakhir ${new Date(activeSession.lastDetection).toLocaleTimeString('id-ID')}` : 'Belum ada deteksi'}
-                icon={Radio}
-                tone="success"
-              />
-              <KpiCard
-                label="Selisih Sementara"
-                value={activeDifference > 0 ? `+${activeDifference.toLocaleString('id-ID')}` : activeDifference.toLocaleString('id-ID')}
-                detail="Proses belum selesai"
-                icon={AlertTriangle}
-                tone={activeDifference === 0 ? 'success' : 'warning'}
-              />
-              <KpiCard
-                label="Status Sensor Line"
-                value={deviceStatus}
-                detail={`${data.device?.deviceCode || '-'} • RSSI ${data.device?.wifiRssi ?? '-'} dBm`}
-                icon={Wifi}
-                tone={deviceTone}
-              />
+            {/* Focal Point: Giant Realtime Sensor Count */}
+            <div className="flex flex-col items-center justify-center rounded-2xl border bg-card p-6 text-center shadow-2xs">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-1">
+                <Radio className="size-4 text-success motion-safe:animate-pulse" />
+                <span>Hasil Sensor Realtime</span>
+              </div>
+              <div className="font-heading text-5xl font-semibold tracking-tight tabular-nums text-foreground sm:text-6xl my-1">
+                {actualCount.toLocaleString('id-ID')}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Ekor ayam terdeteksi pada sesi ini
+              </p>
             </div>
 
-            {/* Informational Progress Bar */}
-            <div className="rounded-xl border bg-muted/20 p-4 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-muted-foreground">Kemajuan Terhadap Manifest Surat Jalan</span>
-                <span className="font-semibold tabular-nums">
-                  {progressPercent !== null ? `${progressPercent}% (${actualCount.toLocaleString('id-ID')} / ${manifestCount.toLocaleString('id-ID')} ekor)` : 'N/A'}
+            {/* Sub-Metrics Grid */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="rounded-xl border bg-muted/10 p-4 text-center">
+                <span className="text-xs font-medium text-muted-foreground block">Target Manifest</span>
+                <span className="font-heading text-2xl font-semibold tabular-nums text-foreground block mt-1">
+                  {manifestCount.toLocaleString('id-ID')}
+                </span>
+                <span className="text-xs text-muted-foreground">Ekor dari Surat Jalan</span>
+              </div>
+
+              <div className="rounded-xl border bg-muted/10 p-4 text-center">
+                <span className="text-xs font-medium text-muted-foreground block">Selisih Berjalan</span>
+                <span className="font-heading text-2xl font-semibold tabular-nums text-foreground block mt-1">
+                  {progress.differenceLabel}
+                </span>
+                <span className="text-xs text-muted-foreground">Status berjalan</span>
+              </div>
+
+              <div className="rounded-xl border bg-muted/10 p-4 text-center">
+                <span className="text-xs font-medium text-muted-foreground block">Status Perangkat Sensor</span>
+                <div className="flex items-center justify-center gap-1.5 mt-1">
+                  <Wifi className="size-4 text-muted-foreground" />
+                  <StatusBadge tone={deviceTone}>{deviceStatus}</StatusBadge>
+                </div>
+                <span className="text-xs text-muted-foreground block mt-0.5">
+                  {data.device?.deviceCode || '-'}
                 </span>
               </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+            </div>
+
+            {/* Progress Bar with Overcount Support */}
+            <div className="rounded-xl border bg-muted/20 p-4 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-muted-foreground">Kemajuan Terhadap Manifest</span>
+                <span className="font-semibold tabular-nums text-foreground">
+                  {progress.progressLabel}
+                </span>
+              </div>
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary">
                 <div
-                  className="h-full bg-primary transition-all duration-300"
-                  style={{ width: `${progressPercent ?? 0}%` }}
+                  className={`h-full transition-all duration-300 ${
+                    progress.state === 'OVER'
+                      ? 'bg-warning'
+                      : progress.state === 'MATCHED'
+                      ? 'bg-success'
+                      : 'bg-primary'
+                  }`}
+                  style={{ width: `${progress.barPercent}%` }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground italic">
-                * Merekap progress penghitungan. Sesi harus diselesaikan secara manual melalui konfirmasi setelah truck selesai.
-              </p>
             </div>
           </CardContent>
         </Card>
@@ -231,9 +253,9 @@ export default function OperatorDashboardPage() {
                   <CheckCircle2 className="size-6 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Jalur Siap Digunakan (IDLE)</CardTitle>
+                  <CardTitle className="text-lg">Jalur Siap Digunakan</CardTitle>
                   <CardDescription className="text-xs">
-                    Tidak ada sesi penghitungan aktif di {data.line?.name || 'Line ini'}. Pilihlah truck pertama dari antrean untuk memulai.
+                    Tidak ada sesi penghitungan aktif di {data.line?.name || 'Jalur ini'}. Pilihlah truk dari antrean untuk memulai.
                   </CardDescription>
                 </div>
               </div>
@@ -261,7 +283,7 @@ export default function OperatorDashboardPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Manifest</p>
+                    <p className="text-xs text-muted-foreground">Target Manifest</p>
                     <p className="font-heading text-xl font-semibold tabular-nums text-foreground">
                       {firstWaitingItem.manifestCount.toLocaleString('id-ID')} <span className="text-xs font-normal">ekor</span>
                     </p>
@@ -274,7 +296,7 @@ export default function OperatorDashboardPage() {
                     className="gap-2"
                   >
                     <Play className="size-4" />
-                    <span>Mulai Penghitungan Truck Ini</span>
+                    <span>Mulai Penghitungan Truk Ini</span>
                   </Button>
                 </div>
               </div>
@@ -306,7 +328,7 @@ export default function OperatorDashboardPage() {
               </CardTitle>
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="tabular-nums">
-                  Total: {data.waitingQueueCount} Truck
+                  Total: {data.waitingQueueCount} Truk
                 </Badge>
                 <Button variant="ghost" size="sm" asChild className="h-8 text-xs gap-1">
                   <Link href="/receiving-queue">
@@ -349,7 +371,7 @@ export default function OperatorDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Today's Detections Summary (Numbers & Alert Only - No Donut Chart) */}
+        {/* Today's Detections Summary */}
         <Card>
           <CardHeader className="pb-3 border-b">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -357,7 +379,7 @@ export default function OperatorDashboardPage() {
               <span>Ringkasan Deteksi Hari Ini</span>
             </CardTitle>
             <CardDescription className="text-xs">
-              Total event deteksi sensor produksi pada jalur ini ({data.line?.name || 'Assigned Line'}).
+              Total event deteksi sensor produksi pada jalur ini ({data.line?.name || 'Jalur terhubung'}).
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-4">
@@ -365,55 +387,47 @@ export default function OperatorDashboardPage() {
               <EmptyState
                 icon={Bird}
                 title="Belum ada deteksi hari ini"
-                description="Statistik deteksi assigned dan unassigned akan diperbarui otomatis begitu sensor mendeteksi ayam."
+                description="Statistik deteksi terhubung sesi dan tanpa sesi akan diperbarui otomatis begitu sensor mendeteksi ayam."
               />
             ) : (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex items-center gap-3 rounded-xl border bg-card p-4">
-                  <StatusBadge tone="success">Assigned</StatusBadge>
+                  <StatusBadge tone="success">Terhubung sesi</StatusBadge>
                   <div>
                     <p className="font-heading text-2xl font-semibold tabular-nums">
                       {data.assignedDetections.toLocaleString('id-ID')}
                     </p>
-                    <p className="text-xs font-medium text-muted-foreground">Assigned (Sesi Aktif)</p>
+                    <p className="text-xs font-medium text-muted-foreground">Terhubung Sesi</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 rounded-xl border bg-card p-4">
-                  <StatusBadge tone="warning">Unassigned</StatusBadge>
+                  <StatusBadge tone={data.unassignedDetections > 0 ? 'warning' : 'neutral'}>Tanpa sesi</StatusBadge>
                   <div>
                     <p className="font-heading text-2xl font-semibold tabular-nums">
                       {data.unassignedDetections.toLocaleString('id-ID')}
                     </p>
-                    <p className="text-xs font-medium text-muted-foreground">Unassigned (Tanpa Sesi)</p>
+                    <p className="text-xs font-medium text-muted-foreground">Tanpa Sesi</p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Alert for Unassigned Detections */}
+            {/* Alert for Unassigned Detections ONLY if > 0 */}
             {data.unassignedDetections > 0 && (
               <Alert className="text-xs border-warning/50 bg-warning/10 text-warning-foreground">
                 <AlertTriangle className="size-4 shrink-0 text-warning" />
-                <AlertTitle className="text-xs font-semibold">Deteksi Unassigned Terdeteksi ({data.unassignedDetections.toLocaleString('id-ID')} ekor)</AlertTitle>
+                <AlertTitle className="text-xs font-semibold">Deteksi Tanpa Sesi ({data.unassignedDetections.toLocaleString('id-ID')} ekor)</AlertTitle>
                 <AlertDescription className="text-xs mt-1">
-                  Terdapat deteksi sensor yang masuk saat tidak ada sesi aktif. Pastikan sesi dimulai sebelum penggantungan ayam dan diselesaikan tepat saat truck habis.
+                  Terdapat deteksi sensor yang masuk saat tidak ada sesi aktif. Pastikan sesi dimulai sebelum penggantungan ayam dan diselesaikan tepat saat truk habis.
                   <div className="mt-2">
                     <Button variant="outline" size="sm" asChild className="h-7 text-xs">
-                      <Link href="/sensor-activity">Periksa Log Sensor Activity</Link>
+                      <Link href="/sensor-activity">Periksa Log Aktivitas Sensor</Link>
                     </Button>
                   </div>
                 </AlertDescription>
               </Alert>
             )}
-
-            <Alert className="text-xs">
-              <AlertTriangle className="size-4 shrink-0 text-muted-foreground" />
-              <AlertTitle className="text-xs font-semibold">Aturan SOP Batas Truck</AlertTitle>
-              <AlertDescription className="text-xs">
-                Pastikan truck yang sedang dihitung benar-benar habis dan penggantungan ayam pada conveyor berhenti sebelum menekan tombol Selesaikan Sesi.
-              </AlertDescription>
-            </Alert>
           </CardContent>
         </Card>
       </div>
