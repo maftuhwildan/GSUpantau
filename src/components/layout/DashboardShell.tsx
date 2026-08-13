@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { Toaster } from "@/components/ui/sonner"
 import { Header } from "./Header"
 import { Sidebar } from "./Sidebar"
 import type { AppRole } from "./navigation"
@@ -25,6 +26,7 @@ export function DashboardShell({ children, role, userEmail, sidebarDefaultOpen =
               {children}
             </div>
           </main>
+          <Toaster position="bottom-right" richColors />
         </WebSocketProvider>
       </SidebarInset>
     </SidebarProvider>

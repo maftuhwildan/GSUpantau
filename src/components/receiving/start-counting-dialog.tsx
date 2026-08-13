@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from '@/components/ui/sonner';
 import { useRouter } from 'next/navigation';
 import { PlayCircle, AlertCircle, Loader2 } from 'lucide-react';
 import {
@@ -90,6 +91,7 @@ export function StartCountingDialog({
       }
 
       onOpenChange(false);
+      toast.success('Penghitungan berhasil dimulai.');
       
       // Redirect to counting console
       if (isAdmin) {

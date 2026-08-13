@@ -19,6 +19,8 @@ import {
 } from '@/components/ui/select';
 import { useWebSocket } from '@/components/layout/ws-provider';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { SensorEventCard } from '@/components/sensor/SensorEventCard';
+import { useUrlFilters } from '@/lib/use-url-filters';
 import type { SensorEventItem } from '@/types/operator-dashboard';
 
 export default function OperatorSensorActivityPage() {
@@ -26,9 +28,14 @@ export default function OperatorSensorActivityPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Filter state
-  const [eventTypeFilter, setEventTypeFilter] = useState<string>('ALL');
-  const [assignmentFilter, setAssignmentFilter] = useState<string>('ALL');
+  // Persistent URL Filters
+  const { filters, setFilter, resetFilters } = useUrlFilters({
+    event_type: 'ALL',
+    assignment_status: 'ALL',
+  });
+
+  const eventTypeFilter = filters.event_type || 'ALL';
+  const assignmentFilter = filters.assignment_status || 'ALL';
 
   // Ref for race-condition tracking
   const requestIdRef = useRef(0);
@@ -54,7 +61,6 @@ export default function OperatorSensorActivityPage() {
       const result = await res.json();
 
       if (currentRequestId !== requestIdRef.current) {
-        // Stale response ignored due to fast filter change
         return;
       }
 
@@ -94,28 +100,6 @@ export default function OperatorSensorActivityPage() {
     }
   }, [lastMessage, fetchEvents]);
 
-  // Interlocking Filter Handlers
-  const handleEventTypeChange = (value: string) => {
-    setEventTypeFilter(value);
-    if (value === 'HEARTBEAT' || value === 'DEVICE_RESTART') {
-      // Non-detection event types do not have assignment; reset assignment filter
-      setAssignmentFilter('ALL');
-    }
-  };
-
-  const handleAssignmentChange = (value: string) => {
-    setAssignmentFilter(value);
-    if (value === 'ASSIGNED' || value === 'UNASSIGNED') {
-      // Selecting assignment status implies DETECTION event type
-      setEventTypeFilter('DETECTION');
-    }
-  };
-
-  const handleResetFilters = () => {
-    setEventTypeFilter('ALL');
-    setAssignmentFilter('ALL');
-  };
-
   const isAssignmentDisabled = eventTypeFilter === 'HEARTBEAT' || eventTypeFilter === 'DEVICE_RESTART';
   const isFilterActive = eventTypeFilter !== 'ALL' || assignmentFilter !== 'ALL';
 
@@ -126,7 +110,7 @@ export default function OperatorSensorActivityPage() {
       case 'HEARTBEAT':
         return 'Heartbeat';
       case 'DEVICE_RESTART':
-        return 'Device Restart';
+        return 'Mulai Ulang Perangkat';
       default:
         return type;
     }
@@ -135,9 +119,9 @@ export default function OperatorSensorActivityPage() {
   const getAssignmentLabel = (status: string) => {
     switch (status) {
       case 'ASSIGNED':
-        return 'Assigned';
+        return 'Terhubung sesi';
       case 'UNASSIGNED':
-        return 'Unassigned';
+        return 'Tanpa sesi';
       default:
         return status;
     }
@@ -145,10 +129,10 @@ export default function OperatorSensorActivityPage() {
 
   const getEmptyStateDescription = () => {
     if (eventTypeFilter === 'DETECTION' && assignmentFilter === 'UNASSIGNED') {
-      return 'Tidak ada event Deteksi Unassigned pada jalur ini.';
+      return 'Tidak ada event Deteksi Tanpa Sesi pada jalur ini.';
     }
     if (eventTypeFilter === 'DETECTION' && assignmentFilter === 'ASSIGNED') {
-      return 'Tidak ada event Deteksi Assigned pada jalur ini.';
+      return 'Tidak ada event Deteksi Terhubung Sesi pada jalur ini.';
     }
     if (eventTypeFilter !== 'ALL') {
       return `Tidak ada event ${getEventLabel(eventTypeFilter)} pada jalur ini.`;
@@ -185,7 +169,7 @@ export default function OperatorSensorActivityPage() {
               <span>Filter Log Sensor</span>
             </CardTitle>
             {isFilterActive && (
-              <Button variant="ghost" size="sm" onClick={handleResetFilters} className="gap-1 text-xs text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1 text-xs text-muted-foreground hover:text-foreground">
                 <RotateCcw className="size-3.5" />
                 <span>Reset Filter</span>
               </Button>
@@ -198,7 +182,7 @@ export default function OperatorSensorActivityPage() {
             {/* Event Type Select */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Tipe Event</Label>
-              <Select value={eventTypeFilter} onValueChange={handleEventTypeChange}>
+              <Select value={eventTypeFilter} onValueChange={(val) => setFilter('event_type', val)}>
                 <SelectTrigger className="w-full text-xs min-h-[44px] sm:min-h-0">
                   <SelectValue placeholder="Pilih Tipe Event" />
                 </SelectTrigger>
@@ -206,7 +190,7 @@ export default function OperatorSensorActivityPage() {
                   <SelectItem value="ALL">Semua Tipe Event</SelectItem>
                   <SelectItem value="DETECTION">Deteksi (DETECTION)</SelectItem>
                   <SelectItem value="HEARTBEAT">Heartbeat (HEARTBEAT)</SelectItem>
-                  <SelectItem value="DEVICE_RESTART">Device Restart (DEVICE_RESTART)</SelectItem>
+                  <SelectItem value="DEVICE_RESTART">Mulai Ulang Perangkat (DEVICE_RESTART)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -218,7 +202,7 @@ export default function OperatorSensorActivityPage() {
               </Label>
               <Select
                 value={assignmentFilter}
-                onValueChange={handleAssignmentChange}
+                onValueChange={(val) => setFilter('assignment_status', val)}
                 disabled={isAssignmentDisabled}
               >
                 <SelectTrigger className="w-full text-xs min-h-[44px] sm:min-h-0">
@@ -226,8 +210,8 @@ export default function OperatorSensorActivityPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">Semua Assignment</SelectItem>
-                  <SelectItem value="ASSIGNED">Assigned (Terhubung Sesi)</SelectItem>
-                  <SelectItem value="UNASSIGNED">Unassigned (Tanpa Sesi)</SelectItem>
+                  <SelectItem value="ASSIGNED">Terhubung sesi (ASSIGNED)</SelectItem>
+                  <SelectItem value="UNASSIGNED">Tanpa sesi (UNASSIGNED)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -242,7 +226,7 @@ export default function OperatorSensorActivityPage() {
         </CardContent>
       </Card>
 
-      {/* Sensor Events Log Table */}
+      {/* Sensor Events Log Card / List */}
       <Card>
         <CardHeader className="pb-3 border-b">
           <div className="flex items-center justify-between">
@@ -254,76 +238,82 @@ export default function OperatorSensorActivityPage() {
           </div>
         </CardHeader>
 
-        <CardContent className="p-0">
+        <CardContent className="p-4 sm:p-6">
           {loading && events.length === 0 ? (
-            <div className="p-6">
-              <LoadingState label="Memuat data sensor events" rows={4} />
-            </div>
+            <LoadingState label="Memuat data sensor events" rows={4} />
           ) : events.length === 0 ? (
-            <div className="p-6">
-              <EmptyState
-                icon={Activity}
-                title="Tidak Ada Event Sensor"
-                description={getEmptyStateDescription()}
-                action={
-                  isFilterActive ? (
-                    <Button variant="outline" size="sm" onClick={handleResetFilters}>
-                      Reset Filter
-                    </Button>
-                  ) : undefined
-                }
-              />
-            </div>
+            <EmptyState
+              icon={Activity}
+              title="Tidak Ada Event Sensor"
+              description={getEmptyStateDescription()}
+              action={
+                isFilterActive ? (
+                  <Button variant="outline" size="sm" onClick={resetFilters}>
+                    Reset Filter
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-muted/50">
-                  <TableRow>
-                    <TableHead className="text-xs">Waktu Server (Received)</TableHead>
-                    <TableHead className="text-xs">Waktu Alat (Device Time)</TableHead>
-                    <TableHead className="text-xs">Tipe Event</TableHead>
-                    <TableHead className="text-xs">Status Assign</TableHead>
-                    <TableHead className="text-xs">Sequence</TableHead>
-                    <TableHead className="text-xs">Perangkat / Boot</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {events.map((evt) => (
-                    <TableRow key={evt.id} className="hover:bg-muted/30">
-                      <TableCell className="text-xs font-mono tabular-nums">
-                        {new Date(evt.receivedAt).toLocaleString('id-ID')}
-                      </TableCell>
-                      <TableCell className="text-xs font-mono tabular-nums text-muted-foreground">
-                        {new Date(evt.deviceTime).toLocaleTimeString('id-ID')}
-                      </TableCell>
-                      <TableCell className="text-xs font-medium">
-                        <Badge
-                          variant={evt.eventType === 'DETECTION' ? 'default' : 'outline'}
-                          className="text-xs"
-                        >
-                          {getEventLabel(evt.eventType)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs font-medium">
-                        {evt.eventType === 'DETECTION' ? (
-                          <StatusBadge tone={evt.assignmentStatus === 'ASSIGNED' ? 'success' : 'warning'}>
-                            {getAssignmentLabel(evt.assignmentStatus)}
-                          </StatusBadge>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs font-mono tabular-nums">
-                        #{evt.sequence}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground font-mono">
-                        {evt.device?.deviceCode || evt.deviceId} ({evt.bootId.slice(0, 8)}...)
-                      </TableCell>
+            <>
+              {/* Mobile View: Card List (< md) */}
+              <div className="space-y-3 md:hidden">
+                {events.map((evt) => (
+                  <SensorEventCard key={evt.id} event={evt} isAdmin={false} />
+                ))}
+              </div>
+
+              {/* Desktop View: Technical Table (>= md) */}
+              <div className="hidden md:block overflow-x-auto rounded-md border border-border">
+                <Table>
+                  <TableHeader className="bg-muted/50">
+                    <TableRow>
+                      <TableHead className="text-xs">Waktu Server (Received)</TableHead>
+                      <TableHead className="text-xs">Waktu Alat (Device Time)</TableHead>
+                      <TableHead className="text-xs">Tipe Event</TableHead>
+                      <TableHead className="text-xs">Status Assign</TableHead>
+                      <TableHead className="text-xs">Sequence</TableHead>
+                      <TableHead className="text-xs">Perangkat / Boot</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {events.map((evt) => (
+                      <TableRow key={evt.id} className="hover:bg-muted/30">
+                        <TableCell className="text-xs font-mono tabular-nums">
+                          {new Date(evt.receivedAt).toLocaleString('id-ID')}
+                        </TableCell>
+                        <TableCell className="text-xs font-mono tabular-nums text-muted-foreground">
+                          {new Date(evt.deviceTime).toLocaleTimeString('id-ID')}
+                        </TableCell>
+                        <TableCell className="text-xs font-medium">
+                          <Badge
+                            variant={evt.eventType === 'DETECTION' ? 'default' : 'outline'}
+                            className="text-xs"
+                          >
+                            {getEventLabel(evt.eventType)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs font-medium">
+                          {evt.eventType === 'DETECTION' ? (
+                            <StatusBadge tone={evt.assignmentStatus === 'ASSIGNED' ? 'success' : 'warning'}>
+                              {getAssignmentLabel(evt.assignmentStatus)}
+                            </StatusBadge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs font-mono tabular-nums">
+                          #{evt.sequence}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground font-mono">
+                          {evt.device?.deviceCode || evt.deviceId} ({evt.bootId.slice(0, 8)}...)
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
