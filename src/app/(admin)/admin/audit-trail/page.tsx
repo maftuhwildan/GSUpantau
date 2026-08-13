@@ -26,7 +26,7 @@ export default function AdminAuditTrailPage() {
   const { lastMessage } = useWebSocket();
 
   // Persistent URL Filters
-  const { filters, setFilter, resetFilters } = useUrlFilters({
+  const { filters, setFilter, setFilters, resetFilters } = useUrlFilters({
     action: 'ALL',
     entity_type: 'ALL',
     actor_id: 'ALL',
@@ -46,8 +46,10 @@ export default function AdminAuditTrailPage() {
   );
 
   const setDateRange = (range: DateOnlyRange) => {
-    setFilter('date_from', range.from || undefined);
-    setFilter('date_to', range.to || undefined);
+    setFilters({
+      date_from: range.from || undefined,
+      date_to: range.to || undefined,
+    });
   };
 
   const [actionOptions, setActionOptions] = useState<string[]>([]);

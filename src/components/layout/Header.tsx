@@ -171,7 +171,8 @@ export function Header({ userEmail = "user@local.test", role = "OPERATOR" }: Hea
 
       <StatusBadge tone={healthTone} className="max-w-32 shrink-0 sm:max-w-none">
         <Radio className={systemHealth.status === "ONLINE" ? "motion-safe:animate-pulse" : ""} />
-        <span className="truncate">{systemHealth.label}</span>
+        <span className="hidden truncate sm:inline">{systemHealth.label}</span>
+        <span className="sr-only sm:hidden">Status perangkat: {systemHealth.label}</span>
       </StatusBadge>
 
       <DropdownMenu>
