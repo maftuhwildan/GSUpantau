@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { History, RefreshCw, AlertCircle, Eye, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { History, RefreshCw, AlertCircle, Eye, RotateCcw, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useWebSocket } from '@/components/layout/ws-provider';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,10 +17,30 @@ import { DateRangePicker, type DateOnlyRange } from '@/components/ui/date-picker
 import { PageHeader } from '@/components/layout/PageHeader';
 import { appendDateRangeParams } from '@/lib/ui-date';
 import { formatAuditActionLabel, formatAuditEntityLabel } from '@/lib/audit-filter';
+import { computeAuditDiff, redactSensitiveData } from '@/lib/audit-diff';
 import { useUrlFilters } from '@/lib/use-url-filters';
 
+interface AuditLogItem {
+  id: string;
+  actorId: string | null;
+  actorRole: string | null;
+  action: string;
+  entityType: string;
+  entityId: string;
+  beforeData: Record<string, any> | null;
+  afterData: Record<string, any> | null;
+  reason: string | null;
+  source: string;
+  createdAt: string;
+  actor?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+}
+
 export default function AdminAuditTrailPage() {
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [usersList, setUsersList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
@@ -54,7 +75,8 @@ export default function AdminAuditTrailPage() {
 
   const [actionOptions, setActionOptions] = useState<string[]>([]);
   const [entityOptions, setEntityOptions] = useState<string[]>([]);
-  const [selectedLog, setSelectedLog] = useState<any | null>(null);
+  const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
+  const [rawJsonOpen, setRawJsonOpen] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -88,8 +110,9 @@ export default function AdminAuditTrailPage() {
       setLogs(result.logs || []);
       setActionOptions(result.filters?.actions || []);
       setEntityOptions(result.filters?.entityTypes || []);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Terjadi kesalahan sistem');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan sistem';
+      setErrorMsg(msg);
     } finally {
       setLoading(false);
     }
@@ -104,12 +127,11 @@ export default function AdminAuditTrailPage() {
   }, [fetchLogs]);
 
   useEffect(() => {
-    if (lastMessage) {
-      const type = (lastMessage as any).type;
+    if (lastMessage && typeof lastMessage === 'object') {
+      const type = (lastMessage as { type?: unknown }).type;
       if (
-        type === 'audit.created' ||
-        type === 'realtime.reconnected' ||
-        type === 'realtime.poll'
+        typeof type === 'string' &&
+        (type === 'audit.created' || type === 'realtime.reconnected' || type === 'realtime.poll')
       ) {
         fetchLogs();
       }
@@ -118,11 +140,26 @@ export default function AdminAuditTrailPage() {
 
   const hasActiveFilters = Boolean(
     actionFilter !== 'ALL' ||
-    entityFilter !== 'ALL' ||
-    actorFilter !== 'ALL' ||
-    dateRange.from ||
-    dateRange.to
+      entityFilter !== 'ALL' ||
+      actorFilter !== 'ALL' ||
+      dateRange.from ||
+      dateRange.to
   );
+
+  const selectedDiff = useMemo(() => {
+    if (!selectedLog) return [];
+    return computeAuditDiff(selectedLog.beforeData, selectedLog.afterData);
+  }, [selectedLog]);
+
+  const redactedBeforeData = useMemo(() => {
+    if (!selectedLog?.beforeData) return null;
+    return redactSensitiveData(selectedLog.beforeData);
+  }, [selectedLog]);
+
+  const redactedAfterData = useMemo(() => {
+    if (!selectedLog?.afterData) return null;
+    return redactSensitiveData(selectedLog.afterData);
+  }, [selectedLog]);
 
   return (
     <div className="space-y-6">
@@ -132,7 +169,7 @@ export default function AdminAuditTrailPage() {
         eyebrow="Admin"
         actions={
           <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading} className="gap-1 min-h-[44px] sm:min-h-0">
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Muat ulang
           </Button>
         }
       />
@@ -240,85 +277,138 @@ export default function AdminAuditTrailPage() {
             Total {logs.length} Log
           </Badge>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-md border border-border overflow-hidden">
-            <Table>
-              <TableHeader className="bg-muted ">
-                <TableRow>
-                  <TableHead className="text-xs w-[150px]">Waktu</TableHead>
-                  <TableHead className="text-xs">Aktor</TableHead>
-                  <TableHead className="text-xs">Aksi</TableHead>
-                  <TableHead className="text-xs">Target Entitas</TableHead>
-                  <TableHead className="text-xs">Alasan / Catatan</TableHead>
-                  <TableHead className="text-xs text-center w-[80px]">Detail</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.length === 0 && !loading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-xs">
-                      Belum ada catatan audit yang cocok dengan filter.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  logs.map((log: any) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="text-xs text-muted-foreground">
+        <CardContent className="p-0 sm:p-6">
+          {logs.length === 0 && !loading ? (
+            <p className="text-center py-8 text-muted-foreground text-xs italic">
+              Belum ada catatan audit yang cocok dengan filter.
+            </p>
+          ) : (
+            <>
+              {/* Mobile Cards View (< md) */}
+              <div className="divide-y divide-border md:hidden">
+                {logs.map((log) => (
+                  <div key={log.id} className="p-4 space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <StatusBadge tone="primary">
+                        {formatAuditActionLabel(log.action)}
+                      </StatusBadge>
+                      <span className="text-muted-foreground tabular-nums">
                         {new Date(log.createdAt).toLocaleString('id-ID')}
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium text-xs text-foreground">{log.actor?.name || 'Sistem'}</div>
-                        <div className="text-xs text-muted-foreground">{log.actorRole || log.source}</div>
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        <StatusBadge tone="primary">
-                          {log.action}
-                        </StatusBadge>
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        <span className="font-medium text-foreground">{log.entityType}</span> <br/>
-                        <span className="text-xs text-muted-foreground truncate block max-w-[120px]">{log.entityId}</span>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate">
-                        {log.reason || '-'}
-                      </TableCell>
-                      <TableCell className="text-xs text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedLog(log)}
-                          className="h-9 w-9 p-0 min-h-[44px] sm:min-h-0 min-w-[44px] sm:min-w-0"
-                          title="Lihat Detail Before / After"
-                          aria-label="Lihat Detail Before / After"
-                        >
-                          <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                        </Button>
-                      </TableCell>
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="font-medium text-foreground">
+                        Entitas: {formatAuditEntityLabel(log.entityType)}
+                      </p>
+                      <p className="text-muted-foreground text-xs font-mono truncate">
+                        ID: {log.entityId}
+                      </p>
+                      <p className="text-muted-foreground">
+                        Aktor: <span className="font-medium text-foreground">{log.actor?.name || 'Sistem'}</span> ({log.actorRole || log.source})
+                      </p>
+                      {log.reason && (
+                        <p className="text-muted-foreground italic">
+                          Alasan: &quot;{log.reason}&quot;
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setRawJsonOpen(false);
+                          setSelectedLog(log);
+                        }}
+                        className="gap-1 text-xs min-h-[44px] sm:min-h-0"
+                      >
+                        <Eye className="size-3.5" />
+                        <span>Lihat Detail Diff</span>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table View (>= md) */}
+              <div className="hidden md:block rounded-md border border-border overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-muted">
+                    <TableRow>
+                      <TableHead className="text-xs w-[150px]">Waktu</TableHead>
+                      <TableHead className="text-xs">Aktor</TableHead>
+                      <TableHead className="text-xs">Aksi</TableHead>
+                      <TableHead className="text-xs">Target Entitas</TableHead>
+                      <TableHead className="text-xs">Alasan / Catatan</TableHead>
+                      <TableHead className="text-xs text-center w-[80px]">Detail</TableHead>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  </TableHeader>
+                  <TableBody>
+                    {logs.map((log) => (
+                      <TableRow key={log.id}>
+                        <TableCell className="text-xs text-muted-foreground tabular-nums">
+                          {new Date(log.createdAt).toLocaleString('id-ID')}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium text-xs text-foreground">{log.actor?.name || 'Sistem'}</div>
+                          <div className="text-xs text-muted-foreground">{log.actorRole || log.source}</div>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <StatusBadge tone="primary">
+                            {formatAuditActionLabel(log.action)}
+                          </StatusBadge>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <span className="font-medium text-foreground">{formatAuditEntityLabel(log.entityType)}</span> <br />
+                          <span className="text-xs text-muted-foreground truncate block max-w-[120px] font-mono">{log.entityId}</span>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate">
+                          {log.reason || '—'}
+                        </TableCell>
+                        <TableCell className="text-xs text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setRawJsonOpen(false);
+                              setSelectedLog(log);
+                            }}
+                            className="h-9 w-9 p-0 min-h-[44px] sm:min-h-0 min-w-[44px] sm:min-w-0"
+                            title="Lihat Detail Before / After"
+                            aria-label="Lihat Detail Before / After"
+                          >
+                            <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
-      {/* Modal Viewer Data Before & After */}
+      {/* Modal Detail Audit Log dengan Human-Readable Diff & Collapsible JSON */}
       <Dialog open={!!selectedLog} onOpenChange={(open) => !open && setSelectedLog(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <History className="h-4 w-4 text-primary" />
-              Detail Audit Log: {selectedLog?.action}
+              Detail Audit: {selectedLog ? formatAuditActionLabel(selectedLog.action) : ''}
             </DialogTitle>
             <DialogDescription className="text-xs pt-1">
-              Informasi lengkap perubahan entitas <strong>{selectedLog?.entityType}</strong> (ID: {selectedLog?.entityId}) pada{' '}
+              Informasi lengkap perubahan entitas <strong>{selectedLog ? formatAuditEntityLabel(selectedLog.entityType) : ''}</strong> (ID: {selectedLog?.entityId}) pada{' '}
               {selectedLog?.createdAt ? new Date(selectedLog.createdAt).toLocaleString('id-ID') : ''}.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 my-2 text-xs">
-            <div className="grid grid-cols-2 gap-2 p-3 bg-muted  rounded-lg border text-xs">
+            {/* Context Summary */}
+            <div className="grid grid-cols-2 gap-2 p-3 bg-muted/60 rounded-lg border text-xs">
               <div>
                 <span className="text-muted-foreground font-medium">Aktor:</span>{' '}
                 <span className="font-medium text-foreground">{selectedLog?.actor?.name || 'Sistem'}</span>
@@ -329,43 +419,95 @@ export default function AdminAuditTrailPage() {
               </div>
               <div className="col-span-2">
                 <span className="text-muted-foreground font-medium">Alasan Perubahan:</span>{' '}
-                <span className="font-medium text-foreground">{selectedLog?.reason || 'Tidak ada alasan khusus'}</span>
+                <span className="font-medium text-foreground">{selectedLog?.reason || '—'}</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Before Data */}
-              <div className="space-y-1.5">
-                <p className="font-medium text-muted-foreground">
-                  Data Sebelum (Before)
-                </p>
-                <div className="p-3 bg-foreground text-muted-foreground rounded-lg text-xs font-mono overflow-x-auto max-h-60 border">
-                  {selectedLog?.beforeData ? (
-                    <pre>{JSON.stringify(selectedLog.beforeData, null, 2)}</pre>
-                  ) : (
-                    <span className="text-muted-foreground italic">Data kosong (Aksi Pembuatan Baru)</span>
-                  )}
+            {/* Human Readable Diff Table */}
+            <div className="space-y-2">
+              <h4 className="font-semibold text-xs text-foreground">Ringkasan Perubahan Field</h4>
+              {selectedDiff.length === 0 ? (
+                <div className="p-3 rounded-md border bg-muted/30 text-xs text-muted-foreground italic">
+                  {selectedLog?.beforeData && !selectedLog?.afterData
+                    ? 'Aksi Penghapusan / Pembatalan Data'
+                    : !selectedLog?.beforeData && selectedLog?.afterData
+                    ? 'Aksi Pembuatan Data Baru'
+                    : 'Tidak ada perubahan field spesifik yang terdeteksi.'}
                 </div>
-              </div>
-
-              {/* After Data */}
-              <div className="space-y-1.5">
-                <p className="font-medium text-muted-foreground">
-                  Data Sesudah (After)
-                </p>
-                <div className="p-3 bg-foreground text-muted-foreground rounded-lg text-xs font-mono overflow-x-auto max-h-60 border">
-                  {selectedLog?.afterData ? (
-                    <pre>{JSON.stringify(selectedLog.afterData, null, 2)}</pre>
-                  ) : (
-                    <span className="text-muted-foreground italic">Data kosong (Aksi Penghapusan/Pembatalan)</span>
-                  )}
+              ) : (
+                <div className="rounded-md border overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-muted">
+                      <TableRow>
+                        <TableHead className="text-xs">Field</TableHead>
+                        <TableHead className="text-xs">Sebelum</TableHead>
+                        <TableHead className="text-xs">Sesudah</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedDiff.map((item) => (
+                        <TableRow key={item.field}>
+                          <TableCell className="text-xs font-medium text-foreground font-mono">
+                            {item.field}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {item.beforeValue}
+                          </TableCell>
+                          <TableCell className="text-xs font-medium text-primary">
+                            {item.afterValue}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
-              </div>
+              )}
             </div>
+
+            {/* Collapsible Raw JSON Data */}
+            <Collapsible open={rawJsonOpen} onOpenChange={setRawJsonOpen} className="border rounded-md p-3 space-y-2">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-full flex items-center justify-between p-0 h-auto font-medium text-xs text-muted-foreground hover:text-foreground">
+                  <span>Lihat Data Mentah (Raw JSON)</span>
+                  <ChevronDown className={`size-4 transition-transform ${rawJsonOpen ? 'rotate-180' : ''}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Before Data */}
+                  <div className="space-y-1.5">
+                    <p className="font-medium text-muted-foreground text-xs">
+                      Data Sebelum (Before)
+                    </p>
+                    <div className="p-3 bg-muted/80 rounded-lg text-xs font-mono overflow-x-auto max-h-56 border">
+                      {redactedBeforeData ? (
+                        <pre>{JSON.stringify(redactedBeforeData, null, 2)}</pre>
+                      ) : (
+                        <span className="text-muted-foreground italic">— (Aksi Pembuatan Baru)</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* After Data */}
+                  <div className="space-y-1.5">
+                    <p className="font-medium text-muted-foreground text-xs">
+                      Data Sesudah (After)
+                    </p>
+                    <div className="p-3 bg-muted/80 rounded-lg text-xs font-mono overflow-x-auto max-h-56 border">
+                      {redactedAfterData ? (
+                        <pre>{JSON.stringify(redactedAfterData, null, 2)}</pre>
+                      ) : (
+                        <span className="text-muted-foreground italic">— (Aksi Pembatalan)</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedLog(null)} className="text-xs">
+            <Button variant="outline" onClick={() => setSelectedLog(null)} className="text-xs min-h-[44px] sm:min-h-0">
               Tutup
             </Button>
           </DialogFooter>

@@ -10,6 +10,7 @@ import { QueueTable, ReceivingData } from '@/components/receiving/queue-table';
 import { ReceivingFormDialog } from '@/components/receiving/receiving-form-dialog';
 import { ReceivingCancelDialog } from '@/components/receiving/receiving-cancel-dialog';
 import { StartCountingDialog } from '@/components/receiving/start-counting-dialog';
+import { PublishReceivingDialog } from '@/components/receiving/publish-receiving-dialog';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -41,11 +42,32 @@ export default function AdminReceivingPage() {
   const activeTab = (filters.status as ReceivingStatusFilter) || 'ALL';
   const searchQuery = filters.search || '';
 
+  // Local debounced search input state
+  const [localSearch, setLocalSearch] = useState(searchQuery);
+
+  // Keep local search input synced if search filter changes externally
+  useEffect(() => {
+    setLocalSearch(searchQuery);
+  }, [searchQuery]);
+
+  // Debounce search update (300ms)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (localSearch !== searchQuery) {
+        setFilter('search', localSearch);
+      }
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [localSearch, searchQuery, setFilter]);
+
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [receivingToEdit, setReceivingToEdit] = useState<ReceivingData | null>(null);
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [receivingToCancel, setReceivingToCancel] = useState<ReceivingData | null>(null);
+
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [receivingToPublish, setReceivingToPublish] = useState<ReceivingData | null>(null);
 
   const [startDialogOpen, setStartDialogOpen] = useState(false);
   const [receivingToStart, setReceivingToStart] = useState<ReceivingData | null>(null);
@@ -93,27 +115,9 @@ export default function AdminReceivingPage() {
     setFormDialogOpen(true);
   };
 
-  const handlePublish = async (rec: ReceivingData) => {
-    if (!confirm(`Terbitkan Surat Jalan ${rec.deliveryNoteNumber} ke dalam antrean Menunggu?`)) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/receivings/${rec.id}/publish`, {
-        method: 'POST',
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error?.message || 'Gagal menerbitkan Surat Jalan.');
-      }
-
-      toast.success(`Surat Jalan ${rec.deliveryNoteNumber} berhasil diterbitkan ke antrean.`);
-      fetchReceivings();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan.';
-      setErrorMsg(msg);
-    }
+  const handlePublishPrompt = (rec: ReceivingData) => {
+    setReceivingToPublish(rec);
+    setPublishDialogOpen(true);
   };
 
   const handleCancelPrompt = (receiving: ReceivingData) => {
@@ -135,7 +139,7 @@ export default function AdminReceivingPage() {
         actions={
           <>
             <Button variant="outline" size="sm" onClick={fetchReceivings} className="gap-1 min-h-[44px] sm:min-h-0">
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Muat ulang
             </Button>
             <Button onClick={handleCreateNew} className="gap-1.5 min-h-[44px] sm:min-h-0">
               <Plus className="h-4 w-4" />
@@ -151,8 +155,8 @@ export default function AdminReceivingPage() {
           <div className="flex w-full items-center gap-2 lg:w-80">
             <Input
               placeholder="Cari No. SJ / Plat / Supir / Supplier..."
-              value={searchQuery}
-              onChange={(e) => setFilter('search', e.target.value)}
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
               className="w-full text-xs min-h-[44px] sm:min-h-0"
             />
           </div>
@@ -201,7 +205,7 @@ export default function AdminReceivingPage() {
           <QueueTable
             receivings={receivings}
             isAdmin={true}
-            onPublish={handlePublish}
+            onPublish={handlePublishPrompt}
             onEdit={handleEdit}
             onCancel={handleCancelPrompt}
             onStart={handleStartPrompt}
@@ -217,6 +221,16 @@ export default function AdminReceivingPage() {
         receivingToEdit={receivingToEdit}
         onSuccess={() => {
           toast.success(receivingToEdit ? 'Surat Jalan berhasil diperbarui.' : 'Surat Jalan baru (Draf) berhasil dibuat.');
+          fetchReceivings();
+        }}
+      />
+
+      <PublishReceivingDialog
+        open={publishDialogOpen}
+        onOpenChange={setPublishDialogOpen}
+        receiving={receivingToPublish}
+        onSuccess={() => {
+          toast.success(`Surat Jalan ${receivingToPublish?.deliveryNoteNumber} berhasil diterbitkan ke antrean.`);
           fetchReceivings();
         }}
       />

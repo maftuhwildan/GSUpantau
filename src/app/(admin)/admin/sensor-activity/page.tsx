@@ -22,9 +22,38 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { SensorEventCard } from '@/components/sensor/SensorEventCard';
 import { useUrlFilters } from '@/lib/use-url-filters';
 
+interface SensorLine {
+  id: string;
+  name: string;
+  lineCode: string;
+}
+
+interface SensorDevice {
+  id: string;
+  deviceCode: string;
+  name?: string;
+}
+
+interface SensorEventData {
+  id: string;
+  eventId: string;
+  bootId: string;
+  deviceId: string;
+  lineId: string;
+  sequence: number;
+  eventType: 'DETECTION' | 'HEARTBEAT' | 'DEVICE_RESTART' | string;
+  deviceTime: string;
+  receivedAt: string;
+  sessionId: string | null;
+  assignmentStatus: 'ASSIGNED' | 'UNASSIGNED' | string;
+  eventMode: 'PRODUCTION' | 'TEST' | 'MAINTENANCE' | string;
+  device?: SensorDevice;
+  line?: SensorLine;
+}
+
 export default function AdminSensorActivityPage() {
-  const [events, setEvents] = useState<any[]>([]);
-  const [lines, setLines] = useState<any[]>([]);
+  const [events, setEvents] = useState<SensorEventData[]>([]);
+  const [lines, setLines] = useState<SensorLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -52,7 +81,7 @@ export default function AdminSensorActivityPage() {
           setLines(json.lines || []);
         }
       } catch (err) {
-        console.error('Gagal mengambil daftar line:', err);
+        console.error('Gagal mengambil daftar jalur:', err);
       }
     }
     fetchLines();
@@ -85,9 +114,10 @@ export default function AdminSensorActivityPage() {
       if (!res.ok) throw new Error(result.error?.message || 'Gagal mengambil data sensor events');
 
       setEvents(result.events || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (currentRequestId === requestIdRef.current) {
-        setErrorMsg(err.message || 'Terjadi kesalahan sistem');
+        const msg = err instanceof Error ? err.message : 'Terjadi kesalahan sistem';
+        setErrorMsg(msg);
       }
     } finally {
       if (currentRequestId === requestIdRef.current) {
@@ -101,14 +131,15 @@ export default function AdminSensorActivityPage() {
   }, [fetchEvents]);
 
   useEffect(() => {
-    if (lastMessage) {
-      const type = (lastMessage as any).type;
+    if (lastMessage && typeof lastMessage === 'object') {
+      const type = (lastMessage as { type?: unknown }).type;
       if (
-        type === 'sensor.event_received' ||
-        type === 'device.heartbeat_received' ||
-        type === 'device.status_updated' ||
-        type === 'realtime.reconnected' ||
-        type === 'realtime.poll'
+        typeof type === 'string' &&
+        (type === 'sensor.event_received' ||
+          type === 'device.heartbeat_received' ||
+          type === 'device.status_updated' ||
+          type === 'realtime.reconnected' ||
+          type === 'realtime.poll')
       ) {
         fetchEvents();
       }
@@ -125,7 +156,7 @@ export default function AdminSensorActivityPage() {
       case 'HEARTBEAT':
         return 'Heartbeat';
       case 'DEVICE_RESTART':
-        return 'Mulai Ulang Perangkat';
+        return 'Mulai ulang perangkat';
       default:
         return type;
     }
@@ -150,7 +181,7 @@ export default function AdminSensorActivityPage() {
         eyebrow="Admin"
         actions={
           <Button variant="outline" size="sm" onClick={fetchEvents} className="gap-1.5 min-h-[44px] sm:min-h-0">
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Muat ulang
           </Button>
         }
       />
@@ -183,7 +214,7 @@ export default function AdminSensorActivityPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {/* Line Filter */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Jalur (Line)</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Jalur</Label>
               <Select value={lineIdFilter} onValueChange={(val) => setFilter('line_id', val)}>
                 <SelectTrigger className="w-full text-xs min-h-[44px] sm:min-h-0">
                   <SelectValue placeholder="Semua Jalur" />
@@ -272,7 +303,7 @@ export default function AdminSensorActivityPage() {
               {/* Mobile View (< md) */}
               <div className="space-y-3 md:hidden">
                 {events.map((evt) => (
-                  <SensorEventCard key={evt.id} event={evt} isAdmin={true} />
+                  <SensorEventCard key={evt.id} event={evt as any} isAdmin={true} />
                 ))}
               </div>
 
@@ -289,7 +320,7 @@ export default function AdminSensorActivityPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {events.map((evt: any) => (
+                    {events.map((evt) => (
                       <TableRow key={evt.id} className="hover:bg-muted/30">
                         <TableCell className="text-xs font-mono tabular-nums">
                           {new Date(evt.deviceTime).toLocaleString('id-ID')}

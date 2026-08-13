@@ -619,13 +619,13 @@ export default function LinesDevicesClient() {
   return (
     <div className="space-y-6">
       {/* ── Page header ── */}
-      <PageHeader title="Line & Perangkat ESP32" description="Kelola jalur counting dan perangkat sensor secara aman." actions={<>
-          <Button id="btn-add-line" size="sm" onClick={openCreateLine}>
+      <PageHeader title="Jalur & Perangkat ESP32" description="Kelola jalur counting dan perangkat sensor secara aman." actions={<>
+          <Button id="btn-add-line" size="sm" onClick={openCreateLine} className="min-h-[44px] sm:min-h-0">
             <Plus className="h-4 w-4 mr-1" />
             Tambah Jalur
           </Button>
-          <Button variant="outline" size="icon" onClick={fetchLines} title="Perbarui">
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          <Button variant="outline" size="sm" onClick={fetchLines} title="Muat ulang" aria-label="Muat ulang data jalur" className="gap-1 min-h-[44px] sm:min-h-0">
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Muat ulang
           </Button>
         </>} />
 
@@ -641,11 +641,11 @@ export default function LinesDevicesClient() {
           {linesList.map((line) => (
             <Card key={line.id} className="border-border">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <GitBranch className="h-4 w-4 text-primary" />
+                    <GitBranch className="h-4 w-4 text-primary shrink-0" />
                     <div>
-                      <CardTitle>
+                      <CardTitle className="text-base font-semibold">
                         {line.lineCode}{' '}
                         <span className="text-muted-foreground font-normal">— {line.name}</span>
                       </CardTitle>
@@ -654,112 +654,174 @@ export default function LinesDevicesClient() {
                       </CardDescription>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge tone={lineStatusVariant(line.status)}>
                       {lineStatusLabel(line.status)}
                     </StatusBadge>
                     <Button
                       id={`btn-edit-line-${line.id}`}
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      title="Edit jalur"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 text-xs min-h-[44px] sm:min-h-0"
+                      title="Edit Jalur"
+                      aria-label={`Edit Jalur ${line.lineCode}`}
                       onClick={() => openEditLine(line)}
                     >
                       <Pencil className="h-3.5 w-3.5" />
+                      <span>Edit</span>
                     </Button>
                     <Button
                       id={`btn-add-device-to-line-${line.id}`}
                       variant="outline"
                       size="sm"
-                      className="h-7"
+                      className="gap-1 text-xs min-h-[44px] sm:min-h-0"
                       onClick={() => openCreateDevice(line.id)}
                     >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Perangkat
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>Perangkat</span>
                     </Button>
                   </div>
                 </div>
               </CardHeader>
 
-              <CardContent>
+              <CardContent className="p-0 sm:p-6">
                 {line.devices.length === 0 ? (
-                  <div className="rounded-lg border border-dashed p-6 text-center text-xs text-muted-foreground">
+                  <div className="m-4 rounded-lg border border-dashed p-6 text-center text-xs text-muted-foreground">
                     Belum ada perangkat pada jalur ini.
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-xs">Kode</TableHead>
-                        <TableHead className="text-xs">Nama</TableHead>
-                        <TableHead className="text-xs">Status</TableHead>
-                        <TableHead className="text-xs">Heartbeat Terakhir</TableHead>
-                        <TableHead className="text-xs">Firmware</TableHead>
-                        <TableHead className="text-xs">RSSI</TableHead>
-                        <TableHead className="text-xs text-right">Aksi</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                  <>
+                    {/* Mobile View (< md) */}
+                    <div className="divide-y divide-border md:hidden">
                       {line.devices.map((device) => (
-                        <TableRow key={device.id}>
-                          <TableCell className="font-medium text-foreground">
-                            <span className="flex items-center gap-1">
-                              <Cpu className="h-3 w-3" />
+                        <div key={device.id} className="p-4 space-y-2 text-xs">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold text-sm text-foreground flex items-center gap-1.5">
+                              <Cpu className="size-4 text-primary" />
                               {device.deviceCode}
                             </span>
-                          </TableCell>
-                          <TableCell className="text-xs">{device.name}</TableCell>
-                          <TableCell>
-                            <StatusBadge
-                              tone={deviceStatusVariant(device.status)}
-                              className="gap-1"
-                            >
-                              <Radio
-                                className={`h-2.5 w-2.5 ${device.status === 'ONLINE' ? 'animate-pulse' : ''}`}
-                              />
+                            <StatusBadge tone={deviceStatusVariant(device.status)} className="gap-1">
+                              <Radio className={`size-2.5 ${device.status === 'ONLINE' ? 'animate-pulse' : ''}`} />
                               {device.status}
                             </StatusBadge>
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {device.lastHeartbeatAt
-                              ? new Date(device.lastHeartbeatAt).toLocaleString('id-ID')
-                              : 'Belum ada'}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {device.firmwareVersion || '—'}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {device.wifiRssi != null ? `${device.wifiRssi} dBm` : '—'}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                id={`btn-edit-device-${device.id}`}
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                title="Edit perangkat"
-                                onClick={() => openEditDevice(device)}
-                              >
-                                <Settings className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                id={`btn-rotate-device-${device.id}`}
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-warning-foreground hover:text-warning-foreground"
-                                title="Rotasi credential"
-                                onClick={() => openRotate(device)}
-                              >
-                                <Key className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                          </div>
+
+                          <div className="text-muted-foreground space-y-1">
+                            <p><span className="font-medium text-foreground">{device.name}</span></p>
+                            <p>
+                              Heartbeat: {device.lastHeartbeatAt ? new Date(device.lastHeartbeatAt).toLocaleString('id-ID') : 'Belum ada'}
+                            </p>
+                            <p>
+                              Firmware: {device.firmwareVersion || '—'} • RSSI: {device.wifiRssi != null ? `${device.wifiRssi} dBm` : '—'}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
+                            <Button
+                              id={`btn-edit-device-mobile-${device.id}`}
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-xs min-h-[44px] sm:min-h-0"
+                              onClick={() => openEditDevice(device)}
+                              aria-label={`Edit Perangkat ${device.deviceCode}`}
+                            >
+                              <Settings className="size-3.5" />
+                              <span>Pengaturan</span>
+                            </Button>
+                            <Button
+                              id={`btn-rotate-device-mobile-${device.id}`}
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-xs text-warning-foreground min-h-[44px] sm:min-h-0"
+                              onClick={() => openRotate(device)}
+                              aria-label={`Rotasi Kredensial ${device.deviceCode}`}
+                            >
+                              <Key className="size-3.5" />
+                              <span>Rotasi Secret</span>
+                            </Button>
+                          </div>
+                        </div>
                       ))}
-                    </TableBody>
-                  </Table>
+                    </div>
+
+                    {/* Desktop View (>= md) */}
+                    <div className="hidden md:block rounded-md border overflow-hidden">
+                      <Table>
+                        <TableHeader className="bg-muted">
+                          <TableRow>
+                            <TableHead className="text-xs">Kode</TableHead>
+                            <TableHead className="text-xs">Nama</TableHead>
+                            <TableHead className="text-xs">Status</TableHead>
+                            <TableHead className="text-xs">Heartbeat Terakhir</TableHead>
+                            <TableHead className="text-xs">Firmware</TableHead>
+                            <TableHead className="text-xs">RSSI</TableHead>
+                            <TableHead className="text-xs text-right">Aksi</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {line.devices.map((device) => (
+                            <TableRow key={device.id}>
+                              <TableCell className="font-medium text-foreground">
+                                <span className="flex items-center gap-1">
+                                  <Cpu className="h-3 w-3 text-primary" />
+                                  {device.deviceCode}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-xs">{device.name}</TableCell>
+                              <TableCell>
+                                <StatusBadge
+                                  tone={deviceStatusVariant(device.status)}
+                                  className="gap-1"
+                                >
+                                  <Radio
+                                    className={`h-2.5 w-2.5 ${device.status === 'ONLINE' ? 'animate-pulse' : ''}`}
+                                  />
+                                  {device.status}
+                                </StatusBadge>
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground">
+                                {device.lastHeartbeatAt
+                                  ? new Date(device.lastHeartbeatAt).toLocaleString('id-ID')
+                                  : 'Belum ada'}
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground">
+                                {device.firmwareVersion || '—'}
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground">
+                                {device.wifiRssi != null ? `${device.wifiRssi} dBm` : '—'}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    id={`btn-edit-device-${device.id}`}
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
+                                    title="Edit Perangkat"
+                                    aria-label={`Edit Perangkat ${device.deviceCode}`}
+                                    onClick={() => openEditDevice(device)}
+                                  >
+                                    <Settings className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    id={`btn-rotate-device-${device.id}`}
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-warning-foreground min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
+                                    title="Rotasi Credential"
+                                    aria-label={`Rotasi Credential Perangkat ${device.deviceCode}`}
+                                    onClick={() => openRotate(device)}
+                                  >
+                                    <Key className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
