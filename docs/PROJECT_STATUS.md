@@ -43,10 +43,13 @@ Lihat `docs/ESP32_SIMULATION_RESULTS.md` untuk observasi simulasi tanpa sensor d
 - Default firmware adalah mode TEST. Mode PRODUCTION harus dipilih eksplisit dan hanya
   digunakan pada receiving uji yang memang sedang aktif.
 
-## Fokus Berikutnya
+## Checkpoint UI Saat Ini
 
-Rombak UI responsif tahap pertama telah diterapkan pada branch
-`codex/ui-shadcn-overhaul`:
+Rombak UI responsif berada pada branch `codex/ui-shadcn-overhaul`. Baseline preset dan
+Tailwind CSS 4 berada pada commit `e282e19`, sedangkan penyelesaian semantic token,
+komponen, dan chart berada pada commit `44ded26`.
+
+Foundation UI yang sudah selesai dan harus dipakai sebagai titik awal:
 
 - Tailwind CSS 4 dan full preset shadcn `b50LzhLQA` (Maia, Mist, Rose, Figtree,
   Lucide, Radix) telah menjadi foundation design system;
@@ -77,9 +80,47 @@ Penyelesaian migrasi visual shadcn dan semantic token juga telah diterapkan:
 - status, error, empty state, dan loading telah diseragamkan dengan `StatusBadge`, `Alert`,
   `ErrorState`, `EmptyState`, dan `Skeleton`.
 
-Tahap berikutnya adalah QA visual terautentikasi menggunakan database development aktif
-dan field test hardware. Seluruh pekerjaan tersebut harus mempertahankan invariant backend
-berikut:
+Dependensi UI tambahan yang sudah terkunci pada checkpoint ini adalah `date-fns@4.4.0`,
+`react-day-picker@10.0.1`, dan `recharts@3.8.0`. Jangan menjalankan ulang full preset atau
+mengganti base primitive karena dapat menimpa penyesuaian aplikasi yang sudah diverifikasi.
+
+File foundation yang perlu diperiksa sebelum mengubah visual:
+
+- `src/app/globals.css` untuk semantic theme token;
+- `src/components/ui/date-picker.tsx` dan `src/lib/ui-date.ts` untuk kontrak date-only;
+- `src/components/ui/chart.tsx` dan `src/lib/chart-data.ts` untuk foundation chart;
+- `src/components/ui/states.tsx` untuk pola loading, empty, dan error;
+- `src/components/layout/DashboardShell.tsx` dan `src/components/layout/navigation.ts`
+  untuk shell, perilaku sidebar responsif, serta menu berbasis role;
+- `src/components/receiving/counting-console.tsx` untuk alur counting bersama Admin dan
+  Operator.
+
+## Fokus Perubahan UI Berikutnya
+
+Tahap berikutnya adalah memperbaiki bagian UI yang secara visual atau komposisi masih
+kurang sesuai. Ini adalah tahap refinement atas foundation yang sudah stabil, bukan migrasi
+design system baru. Perubahan boleh mencakup hierarchy, spacing, density, ukuran komponen,
+susunan section, treatment tabel/kartu/chart, copy visual, dan perilaku responsif.
+
+Rombak Dashboard Admin bergaya executive spacious telah disetujui untuk implementasi.
+Spesifikasi decision-complete, kontrak data, acceptance criteria, referensi visual, dan
+strategi branch tersedia di [`ADMIN_DASHBOARD_REDESIGN.md`](./ADMIN_DASHBOARD_REDESIGN.md).
+Kerjakan Dashboard Admin terlebih dahulu; Dashboard Operator tetap di luar scope tahap ini.
+
+Guardrail untuk agent berikutnya:
+
+- tetap gunakan Tailwind CSS 4, semantic token, dan primitive/composition shadcn yang sudah
+  ada; jangan mengembalikan utility warna palette langsung atau kontrol native;
+- pertahankan interface shell, route, Bahasa Indonesia, role-based navigation, kartu queue
+  mobile, sticky Finish, dialog konfirmasi, dan target sentuh minimal 44 px;
+- pertahankan controlled form, validasi Zod, kontrak date-only `YYYY-MM-DD`, serta batas
+  chart Reports maksimal 12 item tanpa membatasi tabel dan CSV;
+- lakukan perubahan visual per halaman atau per pola agar diff mudah ditinjau; ambil
+  screenshot sebelum/sesudah pada breakpoint yang relevan;
+- dark mode masih di luar cakupan. QA visual halaman terautentikasi secara end-to-end tetap
+  perlu dilakukan saat database development dan akun uji aktif.
+
+Perubahan UI berikutnya tidak boleh menyentuh invariant backend berikut:
 
 - actual hanya berasal dari event DETECTION + PRODUCTION + ASSIGNED;
 - actual tidak dapat diedit manual;

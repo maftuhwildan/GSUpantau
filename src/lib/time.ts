@@ -46,7 +46,7 @@ function getPartsInTimezone(date: Date, timezone: string): DateParts {
   };
 }
 
-function parseDateOnly(value: string): Pick<DateParts, 'year' | 'month' | 'day'> {
+export function parseDateOnly(value: string): Pick<DateParts, 'year' | 'month' | 'day'> {
   const match = DATE_ONLY_PATTERN.exec(value);
   if (!match) throw new Error(`Tanggal harus menggunakan format YYYY-MM-DD: ${value}`);
 
@@ -70,7 +70,7 @@ function formatDateOnly(date: Date, timezone: string): string {
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-function addCalendarDays(value: string, days: number): string {
+export function addCalendarDays(value: string, days: number): string {
   const { year, month, day } = parseDateOnly(value);
   const result = new Date(Date.UTC(year, month - 1, day + days));
   return `${String(result.getUTCFullYear()).padStart(4, '0')}-${String(result.getUTCMonth() + 1).padStart(2, '0')}-${String(result.getUTCDate()).padStart(2, '0')}`;

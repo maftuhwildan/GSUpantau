@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CountingConsole, ActiveSessionDetail } from '@/components/receiving/counting-console';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -13,8 +12,11 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Radio, PlayCircle, Layers, ShieldCheck } from 'lucide-react';
 import { useWebSocket } from '@/components/layout/ws-provider';
 
-export default function AdminCountingPage() {
+function AdminCountingContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlLineId = searchParams.get('line_id');
+
   const [lines, setLines] = useState<Array<{ id: string; name: string; lineCode: string }>>([]);
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [sessionDetail, setSessionDetail] = useState<ActiveSessionDetail | null>(null);
@@ -22,7 +24,7 @@ export default function AdminCountingPage() {
   const [error, setError] = useState<string | null>(null);
   const { lastMessage } = useWebSocket();
 
-  // Fetch lines
+  // Fetch lines and set initial selected line from deep-link urlLineId or first line fallback
   useEffect(() => {
     async function fetchLines() {
       try {
@@ -31,7 +33,13 @@ export default function AdminCountingPage() {
           const json = await res.json();
           if (json.lines && json.lines.length > 0) {
             setLines(json.lines);
-            setSelectedLineId(json.lines[0].id);
+
+            const matched = urlLineId ? json.lines.find((l: { id: string }) => l.id === urlLineId) : null;
+            if (matched) {
+              setSelectedLineId(matched.id);
+            } else {
+              setSelectedLineId(json.lines[0].id);
+            }
           }
         }
       } catch (err) {
@@ -39,7 +47,14 @@ export default function AdminCountingPage() {
       }
     }
     fetchLines();
-  }, []);
+  }, [urlLineId]);
+
+  // Handle line selection change and sync URL
+  const handleLineChange = (lineId: string) => {
+    if (!lineId || lineId === selectedLineId) return;
+    setSelectedLineId(lineId);
+    router.replace(`/admin/counting?line_id=${lineId}`, { scroll: false });
+  };
 
   // Fetch active session
   const fetchActiveSession = useCallback(async () => {
@@ -105,7 +120,7 @@ export default function AdminCountingPage() {
             <ToggleGroup
               type="single"
               value={selectedLineId || undefined}
-              onValueChange={(value) => value && setSelectedLineId(value)}
+              onValueChange={(value) => value && handleLineChange(value)}
               variant="outline"
               spacing={2}
               aria-label="Pilih jalur counting"
@@ -160,5 +175,13 @@ export default function AdminCountingPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function AdminCountingPage() {
+  return (
+    <Suspense fallback={<LoadingState label="Memuat halaman penghitungan Admin" rows={4} />}>
+      <AdminCountingContent />
+    </Suspense>
   );
 }
