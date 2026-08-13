@@ -10,7 +10,6 @@ import {
   Layers,
   ArrowRight,
   Bird,
-  Wifi,
   CheckCircle2,
   ListOrdered,
   Clock,
@@ -94,15 +93,6 @@ export default function OperatorDashboardPage() {
   const actualCount = activeSession?.actualCount || 0;
   const progress = getCountingProgressPresentation(manifestCount, actualCount);
 
-  const deviceTone: 'success' | 'warning' | 'danger' | 'neutral' =
-    deviceStatus === 'ONLINE'
-      ? 'success'
-      : deviceStatus === 'DEGRADED' || deviceStatus === 'MAINTENANCE'
-      ? 'warning'
-      : deviceStatus === 'OFFLINE'
-      ? 'danger'
-      : 'neutral';
-
   const firstWaitingItem = data.waitingQueue.length > 0 ? data.waitingQueue[0] : null;
   const totalDetectionsToday = data.assignedDetections + data.unassignedDetections;
 
@@ -114,7 +104,7 @@ export default function OperatorDashboardPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {lastFetchedAt && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground mr-1">
+              <span className="hidden items-center gap-1 text-xs text-muted-foreground lg:flex">
                 <Clock className="size-3 shrink-0" />
                 Diperbarui {lastFetchedAt}
               </span>
@@ -125,12 +115,6 @@ export default function OperatorDashboardPage() {
                 <span>{data.line.name} ({data.line.lineCode})</span>
               </Badge>
             )}
-            <StatusBadge tone={data.line?.status === 'ACTIVE' ? 'success' : 'warning'}>
-              Jalur {data.line?.status === 'ACTIVE' ? 'Siap' : data.line?.status || 'Siap'}
-            </StatusBadge>
-            <StatusBadge tone={activeSession ? 'warning' : 'neutral'}>
-              {activeSession ? 'Sesi Aktif' : 'Siap'}
-            </StatusBadge>
           </div>
         }
       />
@@ -167,7 +151,7 @@ export default function OperatorDashboardPage() {
                   </CardDescription>
                 </div>
               </div>
-              <Button asChild size="default" className="gap-2">
+              <Button asChild size="default" className="w-full gap-2 sm:w-auto">
                 <Link href="/active-session">
                   <Play className="size-4" />
                   <span>Buka Sesi Aktif</span>
@@ -177,48 +161,47 @@ export default function OperatorDashboardPage() {
           </CardHeader>
 
           <CardContent className="pt-6 space-y-6">
-            {/* Focal Point: Giant Realtime Sensor Count */}
-            <div className="flex flex-col items-center justify-center rounded-2xl border bg-card p-6 text-center shadow-2xs">
-              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-1">
-                <Radio className="size-4 text-success motion-safe:animate-pulse" />
-                <span>Hasil Sensor Realtime</span>
-              </div>
-              <div className="font-heading text-5xl font-semibold tracking-tight tabular-nums text-foreground sm:text-6xl my-1">
-                {actualCount.toLocaleString('id-ID')}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Ekor ayam terdeteksi pada sesi ini
-              </p>
-            </div>
-
-            {/* Sub-Metrics Grid */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="rounded-xl border bg-muted/10 p-4 text-center">
-                <span className="text-xs font-medium text-muted-foreground block">Target Manifest</span>
-                <span className="font-heading text-2xl font-semibold tabular-nums text-foreground block mt-1">
-                  {manifestCount.toLocaleString('id-ID')}
-                </span>
-                <span className="text-xs text-muted-foreground">Ekor dari Surat Jalan</span>
-              </div>
-
-              <div className="rounded-xl border bg-muted/10 p-4 text-center">
-                <span className="text-xs font-medium text-muted-foreground block">Selisih Berjalan</span>
-                <span className="font-heading text-2xl font-semibold tabular-nums text-foreground block mt-1">
-                  {progress.differenceLabel}
-                </span>
-                <span className="text-xs text-muted-foreground">Status berjalan</span>
-              </div>
-
-              <div className="rounded-xl border bg-muted/10 p-4 text-center">
-                <span className="text-xs font-medium text-muted-foreground block">Status Perangkat Sensor</span>
-                <div className="flex items-center justify-center gap-1.5 mt-1">
-                  <Wifi className="size-4 text-muted-foreground" />
-                  <StatusBadge tone={deviceTone}>{deviceStatus}</StatusBadge>
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,1fr)] lg:items-center">
+              {/* Focal point: actual count is intentionally the dominant operational signal. */}
+              <div className="flex flex-col items-center justify-center py-3 text-center lg:items-start lg:text-left">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <Radio className="size-4 text-success motion-safe:animate-pulse" />
+                  <span>Hasil sensor langsung</span>
                 </div>
-                <span className="text-xs text-muted-foreground block mt-0.5">
-                  {data.device?.deviceCode || '-'}
-                </span>
+                <div className="my-1 font-heading text-6xl font-semibold tracking-tight tabular-nums text-foreground sm:text-7xl">
+                  {actualCount.toLocaleString('id-ID')}
+                </div>
+                <p className="text-xs text-muted-foreground">Ekor ayam terdeteksi pada sesi ini</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {activeSession.lastDetection
+                    ? `Deteksi terakhir ${new Date(activeSession.lastDetection).toLocaleTimeString('id-ID')}`
+                    : 'Menunggu deteksi pertama'}
+                </p>
               </div>
+
+              <dl className="grid grid-cols-2 gap-x-5 gap-y-5 border-t pt-5 text-center lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0 lg:text-left">
+                <div>
+                  <dt className="text-xs font-medium text-muted-foreground">Target manifest</dt>
+                  <dd className="mt-1 font-heading text-2xl font-semibold tabular-nums text-foreground">
+                    {manifestCount.toLocaleString('id-ID')}
+                  </dd>
+                  <p className="text-xs text-muted-foreground">Ekor dari Surat Jalan</p>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-muted-foreground">Selisih berjalan</dt>
+                  <dd className="mt-1 font-heading text-2xl font-semibold tabular-nums text-foreground">
+                    {progress.differenceLabel}
+                  </dd>
+                  <p className="text-xs text-muted-foreground">Status sementara</p>
+                </div>
+                <div className="col-span-2 border-t pt-4">
+                  <dt className="text-xs font-medium text-muted-foreground">Perangkat sensor</dt>
+                  <dd className="mt-1 text-sm font-medium text-foreground">
+                    {data.device?.deviceCode || 'Belum terdaftar'}
+                  </dd>
+                  <p className="text-xs text-muted-foreground">Status perangkat tersedia pada header aplikasi</p>
+                </div>
+              </dl>
             </div>
 
             {/* Progress Bar with Overcount Support */}
@@ -321,12 +304,12 @@ export default function OperatorDashboardPage() {
         {/* Waiting Queue Preview */}
         <Card>
           <CardHeader className="pb-3 border-b">
-            <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
                 <Layers className="size-4 text-primary" />
                 <span>Antrean Menunggu</span>
               </CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <Badge variant="secondary" className="tabular-nums">
                   Total: {data.waitingQueueCount} Truk
                 </Badge>
