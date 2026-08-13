@@ -73,6 +73,7 @@ export interface ActiveSessionDetail {
 interface CountingConsoleProps {
   session: ActiveSessionDetail;
   isAdmin?: boolean;
+  compact?: boolean;
   onFinishSuccess?: (result: { actualCount: number; differenceCount: number }) => void;
   onCancelSuccess?: () => void;
 }
@@ -80,6 +81,7 @@ interface CountingConsoleProps {
 export function CountingConsole({
   session,
   isAdmin = false,
+  compact = false,
   onFinishSuccess,
   onCancelSuccess,
 }: CountingConsoleProps) {
@@ -190,12 +192,12 @@ export function CountingConsole({
       )}
 
       {/* Main Console Layout */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
+      <div className={compact ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6"}>
         {/* Left 2 Columns: Counter Display & Finish SOP */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className={compact ? "space-y-4" : "lg:col-span-2 space-y-6"}>
           <Card>
             <CardHeader className="border-b">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className={compact ? "flex flex-col gap-4" : "flex flex-col justify-between gap-4 sm:flex-row sm:items-center"}>
                 <div className="flex items-center gap-3">
                   <div className="shrink-0 rounded-xl bg-primary/10 p-2.5 text-primary">
                     <Truck className="h-6 w-6" />
@@ -307,7 +309,7 @@ export function CountingConsole({
                 </Alert>
               )}
             </CardContent>
-            <CardFooter className="hidden justify-end border-t md:flex">
+            <CardFooter className={compact ? "flex justify-end border-t" : "hidden justify-end border-t md:flex"}>
               <Button onClick={() => setShowFinishDialog(true)} disabled={submitting} size="lg">
                 <Square className="size-4 fill-current" />
                 Selesaikan counting
@@ -398,7 +400,7 @@ export function CountingConsole({
         </div>
       </div>
 
-      <div className="safe-area-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur-sm md:hidden">
+      <div className={compact ? "hidden" : "safe-area-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur-sm md:hidden"}>
         <Button
           onClick={() => setShowFinishDialog(true)}
           disabled={submitting}

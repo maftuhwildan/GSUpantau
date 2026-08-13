@@ -21,7 +21,7 @@ export function DashboardShell({ children, role, userEmail, sidebarDefaultOpen =
         <WebSocketProvider>
           <Header role={role} userEmail={userEmail} />
           <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-            <div className="mx-auto w-full max-w-400 space-y-4 p-3 pb-24 sm:space-y-6 sm:p-5 sm:pb-6 lg:p-6">
+            <div className="app-dashboard-content mx-auto w-full max-w-400 space-y-4 p-3 pb-24 sm:space-y-6 sm:p-5 sm:pb-6 lg:p-6">
               {children}
             </div>
           </main>

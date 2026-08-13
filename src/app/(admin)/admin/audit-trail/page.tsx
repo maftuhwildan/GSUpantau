@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { History, RefreshCw, AlertCircle, Eye, RotateCcw } from 'lucide-react';
+import { History, RefreshCw, AlertCircle, Eye, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DateRangePicker, type DateOnlyRange } from '@/components/ui/date-picker';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { appendDateRangeParams } from '@/lib/ui-date';
+import { formatAuditActionLabel, formatAuditEntityLabel } from '@/lib/audit-filter';
 
 export default function AdminAuditTrailPage() {
   const [logs, setLogs] = useState<any[]>([]);
@@ -28,6 +29,8 @@ export default function AdminAuditTrailPage() {
   const [entityFilter, setEntityFilter] = useState('ALL');
   const [actorFilter, setActorFilter] = useState('ALL');
   const [dateRange, setDateRange] = useState<DateOnlyRange>({});
+  const [actionOptions, setActionOptions] = useState<string[]>([]);
+  const [entityOptions, setEntityOptions] = useState<string[]>([]);
 
   // Selected Log for Detail Modal
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
@@ -62,6 +65,8 @@ export default function AdminAuditTrailPage() {
       if (!res.ok) throw new Error(result.error?.message || 'Gagal mengambil data audit logs');
       
       setLogs(result.logs || []);
+      setActionOptions(result.filters?.actions || []);
+      setEntityOptions(result.filters?.entityTypes || []);
     } catch (err: any) {
       setErrorMsg(err.message || 'Terjadi kesalahan sistem');
     } finally {
@@ -97,6 +102,14 @@ export default function AdminAuditTrailPage() {
     setDateRange({});
   };
 
+  const hasActiveFilters = Boolean(
+    actionFilter !== 'ALL' ||
+    entityFilter !== 'ALL' ||
+    actorFilter !== 'ALL' ||
+    dateRange.from ||
+    dateRange.to
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader title="Audit Trail" description="Rekam jejak aktivitas sistem yang immutable dan tidak dapat diubah atau dihapus." actions={
@@ -113,27 +126,44 @@ export default function AdminAuditTrailPage() {
       )}
 
       {/* Interactive Filters */}
-      <Card className="p-4">
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div>
-              <Label htmlFor="audit-action">Aksi (Action)</Label>
-              <Select value={actionFilter} onValueChange={setActionFilter}><SelectTrigger id="audit-action" className="w-full"><SelectValue /></SelectTrigger><SelectContent>
-                {['ALL','LOGIN','CREATE_RECEIVING','UPDATE_RECEIVING','PUBLISH_RECEIVING','CANCEL_RECEIVING','START_SESSION','FINISH_SESSION','CANCEL_SESSION','CREATE_USER','UPDATE_USER','CREATE_LINE','CREATE_DEVICE'].map((action) => <SelectItem key={action} value={action}>{action === 'ALL' ? 'Semua Action' : action}</SelectItem>)}
+      <Card size="sm">
+        <CardContent className="flex flex-col gap-4 xl:flex-row xl:items-end">
+          <div className="flex min-w-48 items-center gap-3 xl:self-center">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <SlidersHorizontal className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-heading text-sm font-medium text-foreground">Filter audit</p>
+              <p className="text-xs text-muted-foreground">Telusuri aktivitas sistem</p>
+            </div>
+          </div>
+
+          <div className="grid w-full flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-2">
+              <Label htmlFor="audit-action" className="text-xs">Aksi</Label>
+              <Select value={actionFilter} onValueChange={setActionFilter}><SelectTrigger id="audit-action" className="h-11! w-full"><SelectValue /></SelectTrigger><SelectContent>
+                <SelectItem value="ALL">Semua Aksi</SelectItem>
+                {actionOptions.map((action) => (
+                  <SelectItem key={action} value={action}>{formatAuditActionLabel(action)}</SelectItem>
+                ))}
               </SelectContent></Select>
             </div>
 
-            <div>
-              <Label htmlFor="audit-entity">Tipe Entitas</Label>
-              <Select value={entityFilter} onValueChange={setEntityFilter}><SelectTrigger id="audit-entity" className="w-full"><SelectValue /></SelectTrigger><SelectContent>
-                {['ALL','receiving','receiving_session','user','line','device','truck','driver','supplier','app_settings'].map((entity) => <SelectItem key={entity} value={entity}>{entity === 'ALL' ? 'Semua Entitas' : entity}</SelectItem>)}
+            <div className="space-y-2">
+              <Label htmlFor="audit-entity" className="text-xs">Tipe entitas</Label>
+              <Select value={entityFilter} onValueChange={setEntityFilter}><SelectTrigger id="audit-entity" className="h-11! w-full"><SelectValue /></SelectTrigger><SelectContent>
+                <SelectItem value="ALL">Semua Entitas</SelectItem>
+                {entityOptions.map((entity) => (
+                  <SelectItem key={entity} value={entity}>{formatAuditEntityLabel(entity)}</SelectItem>
+                ))}
               </SelectContent></Select>
             </div>
 
-            <div>
-              <Label htmlFor="audit-actor">Aktor (Pengguna)</Label>
-              <Select value={actorFilter} onValueChange={setActorFilter}><SelectTrigger id="audit-actor" className="w-full"><SelectValue /></SelectTrigger><SelectContent>
+            <div className="space-y-2">
+              <Label htmlFor="audit-actor" className="text-xs">Aktor</Label>
+              <Select value={actorFilter} onValueChange={setActorFilter}><SelectTrigger id="audit-actor" className="h-11! w-full"><SelectValue /></SelectTrigger><SelectContent>
                 <SelectItem value="ALL">Semua Aktor</SelectItem>
+                <SelectItem value="SYSTEM">Sistem</SelectItem>
                 {usersList.map((u) => (
                   <SelectItem key={u.id} value={u.id}>
                     {u.name} ({u.roles?.join(', ') || 'USER'})
@@ -142,8 +172,8 @@ export default function AdminAuditTrailPage() {
               </SelectContent></Select>
             </div>
 
-            <div>
-              <Label htmlFor="audit-date-range">Rentang Waktu</Label>
+            <div className="space-y-2">
+              <Label htmlFor="audit-date-range" className="text-xs">Rentang waktu</Label>
               <DateRangePicker
                 id="audit-date-range"
                 value={dateRange}
@@ -153,12 +183,15 @@ export default function AdminAuditTrailPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" size="sm" onClick={handleResetFilters} disabled={loading} className="h-8 gap-1">
-              <RotateCcw className="h-3 w-3" /> Reset Filter
-            </Button>
-          </div>
-        </div>
+          <Button
+            variant="outline"
+            onClick={handleResetFilters}
+            disabled={loading || !hasActiveFilters}
+            className="h-11 w-full shrink-0 gap-1.5 xl:w-auto"
+          >
+            <RotateCcw className="size-3.5" /> Reset filter
+          </Button>
+        </CardContent>
       </Card>
 
       <Card>

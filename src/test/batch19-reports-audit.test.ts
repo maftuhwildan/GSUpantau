@@ -231,6 +231,8 @@ describe('Batch 19: Reports and Audit Trail Invariants & Tests', () => {
     const body = await resAudit.json();
     expect(body.logs).toBeDefined();
     expect(body.logs.length).toBeGreaterThanOrEqual(1);
+    expect(body.filters.actions).toContain('CREATE_USER');
+    expect(body.filters.entityTypes).toContain('user');
 
     const targetLog = body.logs.find((l: any) => l.id === audit1.id);
     expect(targetLog).toBeDefined();
@@ -242,6 +244,34 @@ describe('Batch 19: Reports and Audit Trail Invariants & Tests', () => {
     expect(targetLog.afterData.credentialHash).toBe('[REDACTED]');
     expect(targetLog.afterData.secret).toBe('[REDACTED]');
     expect(targetLog.afterData.name).toBe('Super Secret User');
+  });
+
+  it('audit logs API can filter system activity and canonical entity aliases', async () => {
+    const [systemAudit] = await db
+      .insert(auditLogs)
+      .values({
+        actorId: null,
+        actorRole: null,
+        action: 'UPDATE_SETTINGS',
+        entityType: 'app_settings',
+        entityId: crypto.randomUUID(),
+        source: 'SYSTEM',
+      })
+      .returning();
+
+    const reqAudit = new NextRequest(
+      'http://localhost:3000/api/audit-logs?actor_id=SYSTEM&entity_type=settings',
+      { headers: { cookie: adminCookie } }
+    );
+
+    const resAudit = await getAuditLogs(reqAudit);
+    expect(resAudit.status).toBe(200);
+
+    const body = await resAudit.json();
+    expect(body.logs.some((log: any) => log.id === systemAudit.id)).toBe(true);
+    expect(body.logs.every((log: any) => log.actor === null || log.actor.id === null)).toBe(true);
+    expect(body.filters.entityTypes).toContain('settings');
+    expect(body.filters.entityTypes).not.toContain('app_settings');
   });
 
   it('validates date_from <= date_to and invalid date format returning HTTP 400 for reports and audit logs', async () => {

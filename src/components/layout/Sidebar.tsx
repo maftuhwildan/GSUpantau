@@ -30,11 +30,16 @@ export function Sidebar({ role }: SidebarProps) {
   const { setOpenMobile } = useSidebar()
 
   return (
-    <ShadcnSidebar collapsible="icon" variant="inset">
-      <SidebarHeader>
+    <ShadcnSidebar collapsible="icon" variant="inset" surfaceClassName="app-sidebar-frosted">
+      <SidebarHeader className="border-b border-sidebar-border/60 pb-3">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild tooltip="GSU Pantau">
+            <SidebarMenuButton
+              size="lg"
+              asChild
+              tooltip="GSU Pantau"
+              className="hover:!bg-foreground/10 hover:!text-accent-foreground"
+            >
               <Link href={role === "ADMIN" ? "/admin/dashboard" : "/dashboard"} onClick={() => setOpenMobile(false)}>
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
                   <Bird className="size-4" />
@@ -61,7 +66,14 @@ export function Sidebar({ role }: SidebarProps) {
 
                   return (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={active}
+                        tooltip={item.title}
+                        className={active
+                          ? "!bg-foreground/10 !font-normal !text-accent-foreground hover:!bg-foreground/10 [&_svg]:!text-current [&_svg]:stroke-[1.5]"
+                          : "hover:!bg-foreground/10 hover:!text-accent-foreground hover:[&_svg]:!text-current [&_svg]:stroke-[1.5]"}
+                      >
                         <Link href={item.href} onClick={() => setOpenMobile(false)}>
                           <Icon />
                           <span>{item.title}</span>
@@ -76,7 +88,7 @@ export function Sidebar({ role }: SidebarProps) {
         ))}
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-sidebar-border/60 pt-3">
         <div className="flex items-center justify-between gap-2 px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <span className="truncate text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Poultry Counter MVP</span>
           <StatusBadge tone={role === "ADMIN" ? "primary" : "success"} className="uppercase group-data-[collapsible=icon]:hidden">

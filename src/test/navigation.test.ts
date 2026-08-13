@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 
-import { getNavigation, getNavigationTitle, isNavigationItemActive } from "@/components/layout/navigation"
+import {
+  getNavigation,
+  getNavigationBreadcrumb,
+  getNavigationTitle,
+  isNavigationItemActive,
+} from "@/components/layout/navigation"
 
 describe("navigasi berdasarkan peran", () => {
   it("menyembunyikan seluruh route Admin dari Operator", () => {
@@ -35,5 +40,9 @@ describe("navigasi berdasarkan peran", () => {
     expect(isNavigationItemActive("/admin/receiving/123", "/admin/receiving")).toBe(true)
     expect(isNavigationItemActive("/admin/reports", "/admin/receiving")).toBe(false)
     expect(getNavigationTitle("/admin/audit-trail/123", "ADMIN")).toBe("Audit Trail")
+    expect(getNavigationBreadcrumb("/admin/audit-trail/123", "ADMIN")).toEqual({
+      groupLabel: "Analitik",
+      title: "Audit Trail",
+    })
   })
 })

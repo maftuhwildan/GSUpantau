@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Download, RefreshCw, AlertCircle, RotateCcw, FileText, CheckCircle2, Scale, Radio } from 'lucide-react';
+import { Download, RefreshCw, AlertCircle, RotateCcw, FileText, CheckCircle2, Scale, Radio, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -80,6 +80,8 @@ export default function AdminReportsPage() {
     setLineId('ALL');
   };
 
+  const hasActiveFilters = Boolean(dateRange.from || dateRange.to || lineId !== 'ALL');
+
   const handleExportCSV = () => {
     const params = new URLSearchParams();
     appendDateRangeParams(params, dateRange);
@@ -108,11 +110,21 @@ export default function AdminReportsPage() {
       )}
 
       {/* Interactive Filters Card */}
-      <Card className="p-4">
-        <div className="flex flex-col lg:flex-row items-end gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 w-full">
-            <div>
-              <Label htmlFor="report-date-range">Rentang Tanggal</Label>
+      <Card size="sm">
+        <CardContent className="flex flex-col gap-4 xl:flex-row xl:items-end">
+          <div className="flex min-w-48 items-center gap-3 xl:self-center">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <SlidersHorizontal className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-heading text-sm font-medium text-foreground">Filter laporan</p>
+              <p className="text-xs text-muted-foreground">Data diperbarui otomatis</p>
+            </div>
+          </div>
+
+          <div className="grid w-full flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="report-date-range" className="text-xs">Rentang tanggal</Label>
               <DateRangePicker
                 id="report-date-range"
                 value={dateRange}
@@ -120,9 +132,9 @@ export default function AdminReportsPage() {
                 disabled={loading}
               />
             </div>
-            <div>
-              <Label htmlFor="report-line">Jalur (Line)</Label>
-              <Select value={lineId} onValueChange={setLineId}><SelectTrigger id="report-line" className="w-full"><SelectValue /></SelectTrigger><SelectContent>
+            <div className="space-y-2">
+              <Label htmlFor="report-line" className="text-xs">Jalur</Label>
+              <Select value={lineId} onValueChange={setLineId}><SelectTrigger id="report-line" className="h-11! w-full"><SelectValue /></SelectTrigger><SelectContent>
                 <SelectItem value="ALL">Semua Line</SelectItem>
                 {lines.map((l) => (
                   <SelectItem key={l.id} value={l.id}>
@@ -133,12 +145,15 @@ export default function AdminReportsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
-            <Button variant="outline" size="sm" onClick={handleResetFilters} disabled={loading} className="h-9 gap-1">
-              <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
-            </Button>
-          </div>
-        </div>
+          <Button
+            variant="outline"
+            onClick={handleResetFilters}
+            disabled={loading || !hasActiveFilters}
+            className="h-11 w-full shrink-0 gap-1.5 xl:w-auto"
+          >
+            <RotateCcw className="size-3.5" /> Reset filter
+          </Button>
+        </CardContent>
       </Card>
 
       {loading && !data && (
