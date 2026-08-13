@@ -1,6 +1,6 @@
 # Status Proyek dan Handoff Agent
 
-Terakhir diperbarui: 11 Agustus 2026.
+Terakhir diperbarui: 13 Agustus 2026.
 
 ## Milestone Saat Ini
 
@@ -106,6 +106,13 @@ Rombak Dashboard Admin bergaya executive spacious telah disetujui untuk implemen
 Spesifikasi decision-complete, kontrak data, acceptance criteria, referensi visual, dan
 strategi branch tersedia di [`ADMIN_DASHBOARD_REDESIGN.md`](./ADMIN_DASHBOARD_REDESIGN.md).
 Kerjakan Dashboard Admin terlebih dahulu; Dashboard Operator tetap di luar scope tahap ini.
+
+Refinement UI Operator telah selesai diimplementasikan pada branch
+`codex/operator-ui-refinement` (commit `8e508d6`) dari baseline commit `8b3d5b3`.
+Spesifikasi decision-complete tersedia di [`OPERATOR_UI_REFINEMENT.md`](./OPERATOR_UI_REFINEMENT.md).
+Seluruh halaman Operator (`/dashboard`, `/receiving-queue`, `/active-session`, `/sensor-activity`),
+API extension (`waitingQueueCount`, enum validation `400`), tipe TypeScript, dan test otomatis
+telah lulus 100%.
 
 Guardrail untuk agent berikutnya:
 
