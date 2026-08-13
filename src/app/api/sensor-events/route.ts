@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { sensorEvents } from '@/db/schema';
 import { requirePermission, checkOperatorLineAccess } from '@/lib/auth';
-import { forbiddenError, internalError } from '@/lib/errors';
+import { forbiddenError, internalError, validationError } from '@/lib/errors';
 import { eq, and, desc, gte, lte } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
@@ -19,6 +19,16 @@ export async function GET(req: NextRequest) {
     const dateTo = searchParams.get('date_to');
     const limitParam = parseInt(searchParams.get('limit') || '50', 10);
     const limit = isNaN(limitParam) ? 50 : Math.min(limitParam, 100);
+
+    const validEventTypes = ['DETECTION', 'HEARTBEAT', 'DEVICE_RESTART'];
+    if (eventType && !validEventTypes.includes(eventType)) {
+      return validationError('Query parameter event_type tidak valid.');
+    }
+
+    const validAssignmentStatuses = ['ASSIGNED', 'UNASSIGNED'];
+    if (assignmentStatus && !validAssignmentStatuses.includes(assignmentStatus)) {
+      return validationError('Query parameter assignment_status tidak valid.');
+    }
 
     // ── Operator line restriction ─────────────────────────────────────────
     const lineAccessError = checkOperatorLineAccess(user!, lineId);
